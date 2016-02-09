@@ -1,0 +1,36 @@
+From a02d3094738b4babafe602077f37789a0efbdadf Mon Sep 17 00:00:00 2001
+From: Patrick Ohly <patrick.ohly@intel.com>
+Date: Tue, 9 Feb 2016 16:43:35 +0100
+Subject: [PATCH] main.c: fix non-root usage when installed suid root
+
+When toybox is installed suid root and invoked by a non-root user for
+commands which do not require root privileges, it drops the root
+privileges during initialization.
+
+However, since commit afba5b8efd the result check of setuid() was
+inverted such that it aborted on success, making toybox unusuable for
+non-root users.
+
+Upstream-Status: Submitted [https://github.com/landley/toybox/pull/20]
+
+Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+---
+ main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/main.c b/main.c
+index 6dd4cea..cf82872 100644
+--- a/main.c
++++ b/main.c
+@@ -107,7 +107,7 @@ void toy_init(struct toy_list *which, char *argv[])
+ 
+     if (!(which->flags & TOYFLAG_STAYROOT)) {
+       if (uid != euid) {
+-        if (!setuid(uid)) perror_exit("setuid %d->%d", euid, uid); // drop root
++        if (setuid(uid)) perror_exit("setuid %d->%d", euid, uid); // drop root
+         euid = uid;
+         toys.wasroot++;
+       }
+-- 
+2.1.4
+

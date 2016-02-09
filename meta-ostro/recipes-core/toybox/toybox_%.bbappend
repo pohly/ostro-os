@@ -1,6 +1,11 @@
+FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+
 PV = "0.7.0"
 SRC_URI[md5sum] = "d86c78624b47625c2f0fc64eda599443"
 SRC_URI[sha256sum] = "65428816f88ad3fe92b67df86dc05427c8078fe03843b8b9715fdfa6d29c0f97"
+
+# Fixes usage as non-root when installed suid root.
+SRC_URI += "file://main.c-fix-non-root-usage-when-installed-suid-root.patch"
 
 DEPENDS_append_smack = " smack attr"
 do_configure_append_smack () {
