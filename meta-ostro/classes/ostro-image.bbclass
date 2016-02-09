@@ -566,3 +566,14 @@ ostro_image_patch_os_release[vardepsexclude] = " \
     BUILD_ID \
 "
 ROOTFS_POSTPROCESS_COMMAND += "ostro_image_patch_os_release; "
+
+# Toybox's switch_root has problems when the symlink is an absolute
+# path: it calls stat(), apparently before switching root, and then
+# resolving the absolte symlink fails. In general, relative symlinks
+# would be nicer, but that implies enhancing opkg-utils'
+# update-alternatives, which is out-of-scope for now.
+ROOTFS_POSTPROCESS_COMMAND += "fix_sbin_init; "
+fix_sbin_init () {
+    rm ${IMAGE_ROOTFS}/sbin/init
+    ln -s ../lib/systemd/systemd ${IMAGE_ROOTFS}/sbin/init
+}
