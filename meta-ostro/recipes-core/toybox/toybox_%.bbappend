@@ -35,6 +35,16 @@ do_configure_append () {
     sed -e 's/# CONFIG_TR is not set/CONFIG_TR=y/' -i .config
 }
 
+# "mesg" is expected by the default .profile. Avoid confusing errors
+# by providing a stub. mesg is used to control whether other users
+# can write to a users terminal. Ostro OS isn't a multi-user, interactive
+# OS, so that loss of functionality isn't important.
+SRC_URI += "file://mesg"
+do_install_append () {
+    install -d ${D}/${bindir}
+    install ${WORKDIR}/mesg ${D}/${bindir}
+}
+
 # Sets the compiler for native tools.
 # Necessary for building generated/instlist when Smack is enabled.
 HOSTCC="${BUILD_CC} ${BUILD_CFLAGS} ${BUILD_CPPFLAGS} ${BUILD_LDFLAGS}"
