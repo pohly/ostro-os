@@ -1,0 +1,26 @@
+From 20ae3c889a8acda62d36ca04893f48bcf9f508de Mon Sep 17 00:00:00 2001
+From: Ikey Doherty <michael.i.doherty@intel.com>
+Date: Tue, 17 Feb 2015 15:21:11 +0000
+Subject: [PATCH] Use correct pam.d path
+
+Signed-off-by: Ikey Doherty <michael.i.doherty@intel.com>
+---
+ etc/pam.d/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/etc/pam.d/Makefile.am b/etc/pam.d/Makefile.am
+index d967eb9..ab9852e 100644
+--- a/etc/pam.d/Makefile.am
++++ b/etc/pam.d/Makefile.am
+@@ -22,7 +22,7 @@ pamd_acct_tools_files = \
+ 	usermod
+ 
+ if USE_PAM
+-pamddir = $(sysconfdir)/pam.d
++pamddir = $(datadir)/pam.d
+ pamd_DATA = $(pamd_files)
+ if ACCT_TOOLS_SETUID
+ pamd_DATA += $(pamd_acct_tools_files)
+-- 
+1.9.1
+

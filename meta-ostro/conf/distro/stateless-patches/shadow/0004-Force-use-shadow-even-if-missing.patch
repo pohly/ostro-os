@@ -1,0 +1,67 @@
+From ab0f0da7114c3c79187d0b181a598be848a25e94 Mon Sep 17 00:00:00 2001
+From: Dimitri John Ledkov <dimitri.j.ledkov@intel.com>
+Date: Fri, 27 Feb 2015 14:18:56 +0000
+Subject: [PATCH 4/5] Force use shadow, even if missing.
+Organization: Intel Corporation (UK) Ltd. - Co. Reg. #1134945 - Pipers Way, Swindon SN3 1RJ
+
+---
+ etc/login.defs | 5 +++++
+ lib/getdef.c   | 1 +
+ lib/sgroupio.c | 2 ++
+ lib/shadowio.c | 2 ++
+ 4 files changed, 10 insertions(+)
+
+diff --git a/etc/login.defs b/etc/login.defs
+index 8dd7c44..ca660a9 100644
+--- a/etc/login.defs
++++ b/etc/login.defs
+@@ -393,3 +393,8 @@ USERGROUPS_ENAB yes
+ #
+ #CREATE_HOME     yes
+ 
++#
++# Force use shadow, even if shadow passwd & shadow group files are
++# missing.
++#
++#FORCE_SHADOW    yes
+diff --git a/lib/getdef.c b/lib/getdef.c
+index 5f05045..bea2812 100644
+--- a/lib/getdef.c
++++ b/lib/getdef.c
+@@ -139,6 +139,7 @@ static struct itemdef def_table[] = {
+ 	{"TCB_SYMLINKS", NULL},
+ 	{"USE_TCB", NULL},
+ #endif
++	{"FORCE_SHADOW", NULL},
+ 	{NULL, NULL}
+ };
+ 
+diff --git a/lib/sgroupio.c b/lib/sgroupio.c
+index faed0ad..b497cd6 100644
+--- a/lib/sgroupio.c
++++ b/lib/sgroupio.c
+@@ -249,6 +249,8 @@ int sgr_setdbname (const char *filename)
+ 
+ bool sgr_file_present (void)
+ {
++	if (getdef_bool ("FORCE_SHADOW"))
++		return true;
+ 	return commonio_present (&gshadow_db);
+ }
+ 
+diff --git a/lib/shadowio.c b/lib/shadowio.c
+index 2930e65..1fb1bba 100644
+--- a/lib/shadowio.c
++++ b/lib/shadowio.c
+@@ -125,6 +125,8 @@ int spw_setdbname (const char *filename)
+ 
+ bool spw_file_present (void)
+ {
++	if (getdef_bool ("FORCE_SHADOW"))
++		return true;
+ 	return commonio_present (&shadow_db);
+ }
+ 
+-- 
+2.1.0
+
