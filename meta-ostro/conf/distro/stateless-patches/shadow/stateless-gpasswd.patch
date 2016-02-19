@@ -1,0 +1,86 @@
+diff --git a/src/gpasswd.c b/src/gpasswd.c
+index 27ad959..d8891a0 100644
+--- a/src/gpasswd.c
++++ b/src/gpasswd.c
+@@ -378,6 +378,14 @@ static void open_files (void)
+ 		exit (E_NOPERM);
+ 	}
+ 
++	if (gralt_open (O_RDONLY) == 0) {
++		fprintf (stderr,
++			 _("%s: cannot open %s\n"),
++			 Prog, gralt_dbname ());
++		SYSLOG ((LOG_WARN, "cannot open %s", gralt_dbname ()));
++		exit (E_NOPERM);
++	}
++
+ #ifdef SHADOWGRP
+ 	if (is_shadowgrp) {
+ 		if (sgr_open (O_CREAT | O_RDWR) == 0) {
+@@ -668,6 +676,14 @@ static void close_files (void)
+ 		         Prog, gr_dbname ());
+ 		exit (E_NOPERM);
+ 	}
++
++	if (gralt_close () == 0) {
++		fprintf (stderr,
++			 _("%s: failure while writing changes to %s\n"),
++				 Prog, gralt_dbname ());
++		exit (E_NOPERM);
++	}
++
+ 	add_cleanup (log_gpasswd_success_group, NULL);
+ 	del_cleanup (log_gpasswd_failure_group);
+ 
+@@ -802,19 +818,29 @@ static void get_group (struct group *gr)
+ #ifdef SHADOWGRP
+ 	struct sgrp const*tmpsg = NULL;
+ #endif
+-
+ 	if (gr_open (O_RDONLY) == 0) {
+ 		fprintf (stderr, _("%s: cannot open %s\n"), Prog, gr_dbname ());
+ 		SYSLOG ((LOG_WARN, "cannot open %s", gr_dbname ()));
+ 		exit (E_NOPERM);
+ 	}
+ 
++	if (gralt_open (O_RDONLY) == 0) {
++		fprintf (stderr,
++			 _("%s: cannot open %s\n"),
++			 Prog, gralt_dbname ());
++		SYSLOG ((LOG_WARN, "cannot open %s", gralt_dbname ()));
++		exit (E_NOPERM);
++	}
++
+ 	tmpgr = gr_locate (group);
+ 	if (NULL == tmpgr) {
+-		fprintf (stderr,
+-		         _("%s: group '%s' does not exist in %s\n"),
+-		         Prog, group, gr_dbname ());
+-		exit (E_BAD_ARG);
++		tmpgr = gralt_locate(group);
++		if (NULL == tmpgr) {
++			fprintf (stderr,
++				 _("%s: group '%s' does not exist in %s\n"),
++				 Prog, group, gr_dbname ());
++			exit (E_BAD_ARG);
++		}
+ 	}
+ 
+ 	*gr = *tmpgr;
+@@ -832,6 +858,16 @@ static void get_group (struct group *gr)
+ 		exit (E_NOPERM);
+ 	}
+ 
++	if (gralt_close () == 0) {
++		fprintf (stderr,
++		         _("%s: failure while closing read-only %s\n"),
++		         Prog, gralt_dbname ());
++		SYSLOG ((LOG_ERR,
++		         "failure while closing read-only %s",
++		         gralt_dbname ()));
++		exit (E_NOPERM);
++	}
++
+ #ifdef SHADOWGRP
+ 	if (is_shadowgrp) {
+ 		if (sgr_open (O_RDONLY) == 0) {

@@ -1,0 +1,24 @@
+Index: shadow-4.2.1/lib/getdef.c
+===================================================================
+--- shadow-4.2.1.orig/lib/getdef.c	2015-02-27 16:58:55.760666286 +0000
++++ shadow-4.2.1/lib/getdef.c	2015-02-27 17:00:13.848668603 +0000
+@@ -441,6 +441,19 @@
+ 	 */
+ 	def_loaded = true;
+ 
++	(void)putdef_str ("TTYGROUP", "tty");
++	(void)putdef_str ("HUSHLOGIN_FILE", ".hushlogin");
++	(void)putdef_str ("ERASECHAR", "0177");
++	(void)putdef_str ("KILLCHAR", "025");
++	(void)putdef_str ("SYS_UID_MIN", "500");
++	(void)putdef_str ("SYS_GID_MIN", "500");
++	(void)putdef_str ("ENCRYPT_METHOD", "SHA512");
++	(void)putdef_str ("DEFAULT_HOME", "yes");
++	(void)putdef_str ("USERGROUPS_ENAB", "yes");
++	(void)putdef_str ("CREATE_HOME", "yes");
++	(void)putdef_str ("MAIL_FILE", ".mail");
++	(void)putdef_str ("FORCE_SHADOW", "yes");
++
+ 	/*
+ 	 * Open the configuration definitions file.
+ 	 */
