@@ -33,6 +33,9 @@ RDEPENDS_${PN} += "dash"
 # on awk in initramfs-framework.
 RDEPENDS_${PN} += "gawk"
 
+# toybox mount ignores mount options.
+RDEPENDS_${PN} += "util-linux-mount"
+
 # "tr" is apparently still incomplete, but good enough for
 # initramfs-framework.
 do_configure_append () {

@@ -216,6 +216,9 @@ export ALTERNATIVE_PRIORITY_BASH ?= "305"
 # the rootfs read/write and the updater segfaults because
 # it does not parse the output correctly.
 #
+# When mount comes from Toybox, mount options get ignored
+# during the remount, leading to problems with IMA.
+#
 # For now avoid these problems by sticking to the traditional
 # mount utilities from util-linux.
 export ALTERNATIVE_PRIORITY_UTIL_LINUX ?= "305"
