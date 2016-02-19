@@ -1,0 +1,39 @@
+From f346d547314a3936a7318bbea4163259d9592bf4 Mon Sep 17 00:00:00 2001
+From: Dimitri John Ledkov <dimitri.j.ledkov@intel.com>
+Date: Fri, 6 Feb 2015 14:30:33 +0000
+Subject: [PATCH] shadow stateless config.
+Organization: Intel Corporation (UK) Ltd. - Co. Reg. #1134945 - Pipers Way, Swindon SN3 1RJ
+
+Documentation at: https://securewiki.ith.intel.com/display/otcclr/Stateless+Configurations
+---
+ src/useradd.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/useradd.c b/src/useradd.c
+index a8a1f76..9e2533a 100644
+--- a/src/useradd.c
++++ b/src/useradd.c
+@@ -73,7 +73,7 @@
+ #endif
+ 
+ #ifndef SKEL_DIR
+-#define SKEL_DIR "/etc/skel"
++#define SKEL_DIR "/usr/share/defaults/skel"
+ #endif
+ #ifndef USER_DEFAULTS_FILE
+ #define USER_DEFAULTS_FILE "/etc/default/useradd"
+@@ -94,9 +94,9 @@ const char *Prog;
+  * These defaults are used if there is no defaults file.
+  */
+ static gid_t def_group = 100;
+-static const char *def_gname = "other";
++static const char *def_gname = "users";
+ static const char *def_home = "/home";
+-static const char *def_shell = "";
++static const char *def_shell = "/bin/bash";
+ static const char *def_template = SKEL_DIR;
+ static const char *def_create_mail_spool = "no";
+ 
+-- 
+2.1.0
+

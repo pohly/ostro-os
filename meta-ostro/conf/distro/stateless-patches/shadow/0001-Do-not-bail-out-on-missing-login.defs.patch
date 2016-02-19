@@ -1,0 +1,52 @@
+From f0a3ec4bcddfe98d9a9f5cd0155d29a0dc180487 Mon Sep 17 00:00:00 2001
+From: Dimitri John Ledkov <dimitri.j.ledkov@intel.com>
+Date: Fri, 27 Feb 2015 11:23:58 +0000
+Subject: [PATCH 1/5] Do not bail out on missing login.defs.
+Organization: Intel Corporation (UK) Ltd. - Co. Reg. #1134945 - Pipers Way, Swindon SN3 1RJ
+
+For most operations tools have compiled-in defaults, and thus can
+operate without login.defs present.
+---
+ lib/getdef.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/lib/getdef.c b/lib/getdef.c
+index b5f780c..c2f2dfb 100644
+--- a/lib/getdef.c
++++ b/lib/getdef.c
+@@ -417,10 +417,19 @@ static void def_load (void)
+ 	char buf[1024], *name, *value, *s;
+ 
+ 	/*
++	 * Set the initialized flag.
++	 * (do it early to prevent recursion in putdef_str())
++	 */
++	def_loaded = true;
++
++	/*
+ 	 * Open the configuration definitions file.
+ 	 */
+ 	fp = fopen (def_fname, "r");
+ 	if (NULL == fp) {
++		if (errno == ENOENT)
++			return;
++
+ 		int err = errno;
+ 		SYSLOG ((LOG_CRIT, "cannot open login definitions %s [%s]",
+ 		         def_fname, strerror (err)));
+@@ -428,12 +437,6 @@ static void def_load (void)
+ 	}
+ 
+ 	/*
+-	 * Set the initialized flag.
+-	 * (do it early to prevent recursion in putdef_str())
+-	 */
+-	def_loaded = true;
+-
+-	/*
+ 	 * Go through all of the lines in the file.
+ 	 */
+ 	while (fgets (buf, (int) sizeof (buf), fp) != NULL) {
+-- 
+2.1.0
+

@@ -1,0 +1,387 @@
+diff --git a/lib/defines.h b/lib/defines.h
+index 8d21d30..fb9470a 100644
+--- a/lib/defines.h
++++ b/lib/defines.h
+@@ -302,6 +302,10 @@ char *strchr (), *strrchr (), *strtok ();
+ #define PASSWD_FILE "/etc/passwd"
+ #endif
+ 
++#ifndef PASSWD_ALTFILE
++#define PASSWD_ALTFILE "/usr/share/defaults/etc/passwd"
++#endif
++
+ #ifndef GROUP_FILE
+ #define GROUP_FILE "/etc/group"
+ #endif
+@@ -314,6 +318,10 @@ char *strchr (), *strrchr (), *strtok ();
+ #define SHADOW_FILE "/etc/shadow"
+ #endif
+ 
++#ifndef SHADOW_ALTFILE
++#define SHADOW_ALTFILE "/usr/share/defaults/etc/shadow"
++#endif
++
+ #ifdef SHADOWGRP
+ #ifndef SGROUP_FILE
+ #define SGROUP_FILE "/etc/gshadow"
+diff --git a/lib/pwio.c b/lib/pwio.c
+index 7ee8537..47ce7df 100644
+--- a/lib/pwio.c
++++ b/lib/pwio.c
+@@ -117,6 +117,37 @@ static struct commonio_db passwd_db = {
+ 	false			/* readonly */
+ };
+ 
++static struct commonio_ops passwd_altops = {
++	passwd_dup,
++	passwd_free,
++	passwd_getname,
++	passwd_parse,
++	passwd_put,
++	fgets,
++	fputs,
++	NULL,			/* open_hook */
++	NULL			/* close_hook */
++};
++
++static struct commonio_db passwd_altdb = {
++	PASSWD_ALTFILE,		/* filename */
++	&passwd_altops,		/* ops */
++	NULL,			/* fp */
++#ifdef WITH_SELINUX
++	NULL,			/* scontext */
++#endif
++	0644,                   /* st_mode */
++	0,                      /* st_uid */
++	0,                      /* st_gid */
++	NULL,			/* head */
++	NULL,			/* tail */
++	NULL,			/* cursor */
++	false,			/* changed */
++	false,			/* isopen */
++	false,			/* locked */
++	false			/* readonly */
++};
++
+ int pw_setdbname (const char *filename)
+ {
+ 	return commonio_setname (&passwd_db, filename);
+@@ -127,6 +158,11 @@ int pw_setdbname (const char *filename)
+ 	return passwd_db.filename;
+ }
+ 
++/*@observer@*/const char *pwalt_dbname (void)
++{
++	return passwd_altdb.filename;
++}
++
+ int pw_lock (void)
+ {
+ 	return commonio_lock (&passwd_db);
+@@ -137,11 +173,21 @@ int pw_open (int mode)
+ 	return commonio_open (&passwd_db, mode);
+ }
+ 
++int pwalt_open (int mode)
++{
++	return commonio_open (&passwd_altdb, mode);
++}
++
+ /*@observer@*/ /*@null@*/const struct passwd *pw_locate (const char *name)
+ {
+ 	return commonio_locate (&passwd_db, name);
+ }
+ 
++/*@observer@*/ /*@null@*/const struct passwd *pwalt_locate (const char *name)
++{
++	return commonio_locate (&passwd_altdb, name);
++}
++
+ /*@observer@*/ /*@null@*/const struct passwd *pw_locate_uid (uid_t uid)
+ {
+ 	const struct passwd *pwd;
+@@ -179,6 +225,11 @@ int pw_close (void)
+ 	return commonio_close (&passwd_db);
+ }
+ 
++int pwalt_close (void)
++{
++	return commonio_close (&passwd_altdb);
++}
++
+ int pw_unlock (void)
+ {
+ 	return commonio_unlock (&passwd_db);
+diff --git a/lib/pwio.h b/lib/pwio.h
+index 2db85e0..a25f982 100644
+--- a/lib/pwio.h
++++ b/lib/pwio.h
+@@ -39,13 +39,17 @@
+ #include <pwd.h>
+ 
+ extern int pw_close (void);
++extern int pwalt_close (void);
+ extern /*@observer@*/ /*@null@*/const struct passwd *pw_locate (const char *name);
++extern /*@observer@*/ /*@null@*/const struct passwd *pwalt_locate (const char *name);
+ extern /*@observer@*/ /*@null@*/const struct passwd *pw_locate_uid (uid_t uid);
+ extern int pw_lock (void);
+ extern int pw_setdbname (const char *filename);
+ extern /*@observer@*/const char *pw_dbname (void);
++extern /*@observer@*/const char *pwalt_dbname (void);
+ extern /*@observer@*/ /*@null@*/const struct passwd *pw_next (void);
+ extern int pw_open (int mode);
++extern int pwalt_open (int mode);
+ extern int pw_remove (const char *name);
+ extern int pw_rewind (void);
+ extern int pw_unlock (void);
+diff --git a/lib/shadowio.c b/lib/shadowio.c
+index 6e44ab2..b090c76 100644
+--- a/lib/shadowio.c
++++ b/lib/shadowio.c
+@@ -116,6 +116,37 @@ static struct commonio_db shadow_db = {
+ 	false			/* readonly */
+ };
+ 
++static struct commonio_ops shadow_altops = {
++	shadow_dup,
++	shadow_free,
++	shadow_getname,
++	shadow_parse,
++	shadow_put,
++	fgets,
++	fputs,
++	NULL,			/* open_hook */
++	NULL			/* close_hook */
++};
++
++static struct commonio_db shadow_altdb = {
++	SHADOW_ALTFILE,		/* filename */
++	&shadow_altops,		/* ops */
++	NULL,			/* fp */
++#ifdef WITH_SELINUX
++	NULL,			/* scontext */
++#endif				/* WITH_SELINUX */
++	0400,                   /* st_mode */
++	0,                      /* st_uid */
++	0,                      /* st_gid */
++	NULL,			/* head */
++	NULL,			/* tail */
++	NULL,			/* cursor */
++	false,			/* changed */
++	false,			/* isopen */
++	false,			/* locked */
++	false			/* readonly */
++};
++
+ int spw_setdbname (const char *filename)
+ {
+ 	return commonio_setname (&shadow_db, filename);
+@@ -126,11 +157,17 @@ int spw_setdbname (const char *filename)
+ 	return shadow_db.filename;
+ }
+ 
++/*@observer@*/const char *spwalt_dbname (void)
++{
++	return shadow_altdb.filename;
++}
++
+ bool spw_file_present (void)
+ {
+ 	if (getdef_bool ("FORCE_SHADOW"))
+ 		return true;
+-	return commonio_present (&shadow_db);
++	return commonio_present (&shadow_db) ||
++		commonio_present (&shadow_altdb);
+ }
+ 
+ int spw_lock (void)
+@@ -176,11 +213,35 @@ int spw_open (int mode)
+ 	return retval;
+ }
+ 
++int spwalt_open (int mode)
++{
++	int retval = 0;
++#ifdef WITH_TCB
++	bool use_tcb = getdef_bool ("USE_TCB");
++
++	if (use_tcb && (shadowtcb_drop_priv () == SHADOWTCB_FAILURE)) {
++		return 0;
++	}
++#endif				/* WITH_TCB */
++	retval = commonio_open (&shadow_altdb, mode);
++#ifdef WITH_TCB
++	if (use_tcb && (shadowtcb_gain_priv () == SHADOWTCB_FAILURE)) {
++		return 0;
++	}
++#endif				/* WITH_TCB */
++	return retval;
++}
++
+ /*@observer@*/ /*@null@*/const struct spwd *spw_locate (const char *name)
+ {
+ 	return commonio_locate (&shadow_db, name);
+ }
+ 
++/*@observer@*/ /*@null@*/const struct spwd *spwalt_locate (const char *name)
++{
++	return commonio_locate (&shadow_altdb, name);
++}
++
+ int spw_update (const struct spwd *sp)
+ {
+ 	return commonio_update (&shadow_db, (const void *) sp);
+@@ -220,6 +281,25 @@ int spw_close (void)
+ 	return retval;
+ }
+ 
++int spwalt_close (void)
++{
++	int retval = 0;
++#ifdef WITH_TCB
++	bool use_tcb = getdef_bool ("USE_TCB");
++
++	if (use_tcb && (shadowtcb_drop_priv () == SHADOWTCB_FAILURE)) {
++		return 0;
++	}
++#endif				/* WITH_TCB */
++	retval = commonio_close (&shadow_altdb);
++#ifdef WITH_TCB
++	if (use_tcb && (shadowtcb_gain_priv () == SHADOWTCB_FAILURE)) {
++		return 0;
++	}
++#endif				/* WITH_TCB */
++	return retval;
++}
++
+ int spw_unlock (void)
+ {
+ #ifdef WITH_TCB
+diff --git a/lib/shadowio.h b/lib/shadowio.h
+index 229dfdb..a458324 100644
+--- a/lib/shadowio.h
++++ b/lib/shadowio.h
+@@ -37,13 +37,17 @@
+ #include "defines.h"
+ 
+ extern int spw_close (void);
++extern int spwalt_close (void);
+ extern bool spw_file_present (void);
+ extern /*@observer@*/ /*@null@*/const struct spwd *spw_locate (const char *name);
++extern /*@observer@*/ /*@null@*/const struct spwd *spwalt_locate (const char *name);
+ extern int spw_lock (void);
+ extern int spw_setdbname (const char *filename);
+ extern /*@observer@*/const char *spw_dbname (void);
++extern /*@observer@*/const char *spwalt_dbname (void);
+ extern /*@observer@*/ /*@null@*/const struct spwd *spw_next (void);
+ extern int spw_open (int mode);
++extern int spwalt_open (int mode);
+ extern int spw_remove (const char *name);
+ extern int spw_rewind (void);
+ extern int spw_unlock (void);
+diff --git a/src/usermod.c b/src/usermod.c
+index 6d9a172..d6e9c7e 100644
+--- a/src/usermod.c
++++ b/src/usermod.c
+@@ -497,7 +497,8 @@ static char *new_pw_passwd (char *pw_pass)
+ static void new_pwent (struct passwd *pwent)
+ {
+ 	if (lflg) {
+-		if (pw_locate (user_newname) != NULL) {
++		if (pw_locate (user_newname) != NULL && 
++		    pwalt_locate (user_newname) != NULL) {
+ 			/* This should never happen.
+ 			 * It was already checked that the user doesn't
+ 			 * exist on the system.
+@@ -591,7 +592,8 @@ static void new_pwent (struct passwd *pwent)
+ static void new_spent (struct spwd *spent)
+ {
+ 	if (lflg) {
+-		if (spw_locate (user_newname) != NULL) {
++		if (spw_locate (user_newname) != NULL &&
++		    spwalt_locate (user_newname) != NULL) {
+ 			fprintf (stderr,
+ 			         _("%s: user '%s' already exists in %s\n"),
+ 			         Prog, user_newname, spw_dbname ());
+@@ -1406,6 +1408,13 @@ static void close_files (void)
+ 		SYSLOG ((LOG_ERR, "failure while writing changes to %s", pw_dbname ()));
+ 		fail_exit (E_PW_UPDATE);
+ 	}
++	if (pwalt_close () == 0) {
++		fprintf (stderr,
++		         _("%s: failure while writing changes to %s\n"),
++		         Prog, pwalt_dbname ());
++		SYSLOG ((LOG_ERR, "failure while writing changes to %s", pwalt_dbname ()));
++		fail_exit (E_PW_UPDATE);
++	}
+ 	if (is_shadow_pwd && (spw_close () == 0)) {
+ 		fprintf (stderr,
+ 		         _("%s: failure while writing changes to %s\n"),
+@@ -1415,6 +1424,15 @@ static void close_files (void)
+ 		         spw_dbname ()));
+ 		fail_exit (E_PW_UPDATE);
+ 	}
++	if (is_shadow_pwd && (spwalt_close () == 0)) {
++		fprintf (stderr,
++		         _("%s: failure while writing changes to %s\n"),
++		         Prog, spwalt_dbname ());
++		SYSLOG ((LOG_ERR,
++		         "failure while writing changes to %s",
++		         spwalt_dbname ()));
++		fail_exit (E_PW_UPDATE);
++	}
+ 
+ 	if (Gflg || lflg) {
+ 		if (gr_close () == 0) {
+@@ -1548,6 +1566,12 @@ static void open_files (void)
+ 		fail_exit (E_PW_UPDATE);
+ 	}
+ 	pw_locked = true;
++	if (pwalt_open (O_RDONLY) == 0) {
++		fprintf (stderr,
++		         _("%s: cannot open %s\n"),
++		         Prog, pwalt_dbname ());
++		fail_exit (E_PW_UPDATE);
++	}
+ 	if (pw_open (O_CREAT | O_RDWR) == 0) {
+ 		fprintf (stderr,
+ 		         _("%s: cannot open %s\n"),
+@@ -1561,6 +1585,12 @@ static void open_files (void)
+ 		fail_exit (E_PW_UPDATE);
+ 	}
+ 	spw_locked = true;
++	if (is_shadow_pwd && (spwalt_open (O_RDONLY) == 0)) {
++		fprintf (stderr,
++		         _("%s: cannot open %s\n"),
++		         Prog, spwalt_dbname ());
++		fail_exit (E_PW_UPDATE);
++	}
+ 	if (is_shadow_pwd && (spw_open (O_CREAT | O_RDWR) == 0)) {
+ 		fprintf (stderr,
+ 		         _("%s: cannot open %s\n"),
+@@ -1660,10 +1690,13 @@ static void usr_update (void)
+ 	 */
+ 	pwd = pw_locate (user_name);
+ 	if (NULL == pwd) {
+-		fprintf (stderr,
+-		         _("%s: user '%s' does not exist in %s\n"),
+-		         Prog, user_name, pw_dbname ());
+-		fail_exit (E_NOTFOUND);
++		pwd = pwalt_locate (user_name);
++		if (NULL == pwd) {
++			fprintf (stderr,
++				 _("%s: user '%s' does not exist in %s\n"),
++				 Prog, user_name, pw_dbname ());
++			fail_exit (E_NOTFOUND);
++		}
+ 	}
+ 	pwent = *pwd;
+ 	new_pwent (&pwent);
+@@ -1672,6 +1705,7 @@ static void usr_update (void)
+ 	/* If the shadow file does not exist, it won't be created */
+ 	if (is_shadow_pwd) {
+ 		spwd = spw_locate (user_name);
++		spwd = spwd ? spwd : spwalt_locate (user_name);
+ 		if (NULL != spwd) {
+ 			/* Update the shadow entry if it exists */
+ 			spent = *spwd;
