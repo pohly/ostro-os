@@ -19,8 +19,8 @@ debug_hook_handler() {
 	module=$2
 
 	if [ -n "$bootparam_shell" ] && [ "$bootparam_shell" != "true" ]; then
-		shell_wanted_status=`expr $bootparam_shell : '\(.*\):.*'`
-		shell_wanted_module=`expr $bootparam_shell : '.*:\(.*\)'`
+		shell_wanted_status=`echo $bootparam_shell | cut -d: -f1`
+		shell_wanted_module=`echo $bootparam_shell | cut -d: -f2`
 
 		if [ "$shell_wanted_status" = "before" ]; then
 			shell_wanted_status=pre
@@ -43,8 +43,8 @@ debug_hook_handler() {
 	fi
 
 	if [ -n "$bootparam_shell_debug" ] && [ "$bootparam_shell_debug" != "true" ]; then
-		shell_debug_wanted_status=`expr $bootparam_shell_debug : '\(.*\):.*'`
-		shell_debug_wanted_module=`expr $bootparam_shell_debug : '.*:\(.*\)'`
+		shell_debug_wanted_status=`echo $bootparam_shell_debug | cut -d: -f1`
+		shell_debug_wanted_module=`echo $bootparam_shell_debug | cut -d: -f2`
 
 		if [ "$shell_debug_wanted_status" = "before" ]; then
 			shell_debug_wanted_status=pre
