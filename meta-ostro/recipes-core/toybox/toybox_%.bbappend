@@ -7,6 +7,10 @@ SRC_URI[sha256sum] = "65428816f88ad3fe92b67df86dc05427c8078fe03843b8b9715fdfa6d2
 # Fixes usage as non-root when installed suid root.
 SRC_URI += "file://main.c-fix-non-root-usage-when-installed-suid-root.patch"
 
+# Fixes a race condition when compiling under load (https://github.com/landley/toybox/issues/24):
+# "wait: pid .... is not a child of this shell"
+SRC_URI += "file://Switch-to-for-make.sh-process-enumeration.patch"
+
 DEPENDS_append_smack = " smack attr"
 do_configure_append_smack () {
     # Enable smack in toybox.
