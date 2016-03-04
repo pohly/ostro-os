@@ -327,6 +327,11 @@ STATELESS_ETC_WHITELIST += " \
     profile.d/* \
 "
 
+STATELESS_MV_pn-systemd-watchdog = " \
+   systemd=${base_libdir}/systemd \
+"
+FILES_${PN}_append_pn-systemd-watchdog = " ${base_libdir}/systemd"
+
 # Relevant for systemd configuration installed during postinst.
 STATELESS_MV_ROOTFS += " \
     systemd=${libdir}/systemd \
