@@ -36,4 +36,4 @@ systemd_sysusers_create () {
     done
 }
 
-ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd_sysusers_create;', '', d)}"
+ROOTFS_POSTINSTALL_COMMAND =. "${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd_sysusers_create;', '', d)}"

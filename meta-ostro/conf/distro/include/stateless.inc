@@ -113,21 +113,10 @@ STATELESS_RM_pn-tzdata = " \
     localtime \
 "
 
-# TODO: find via altfiles.
-#STATELESS_MV_pn-netbase = " \
-#    ${@ ' '.join('%s=${datadir}/defaults/%s' % (x,x) for x in ['services', 'protocols', 'hosts', 'rpc'])} \
-#"
-#FILES_${PN}_append_pn-netbase = " ${datadir}/defaults"
-STATELESS_ETC_WHITELIST += " \
-    services \
-    protocols \
-    hosts \
-    rpc \
-    passwd* \
-    group* \
-    shadow* \
-    gshadow* \
-"
+# Whether the netbase files (services, protocols, hosts, rpc) need to
+# be relocated depends on the image. It will be done during image
+# creation.
+STATELESS_PN_WHITELIST += "netbase"
 
 # Base recipe copies some terminfo files to /etc and symlinks to
 # them. Also sets up xterm-color as default xterm. We undo that here.
@@ -351,3 +340,59 @@ STATELESS_ETC_WHITELIST += " \
 
 # initramfs is by design read-only and thus does not have to be stateless.
 STATELESS_PN_WHITELIST += "ostro-initramfs"
+
+# Install nss-altfiles and activate it in ${datadir}/defaults/etc/nsswitch.conf.
+CORE_IMAGE_EXTRA_INSTALL += "${@bb.utils.contains('STATELESS_PN_WHITELIST', '${PN}', '', 'nss-altfiles', d)}"
+ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('STATELESS_PN_WHITELIST', '${PN}', '', 'stateless_activate_altfiles;', d)}"
+
+stateless_activate_altfiles () {
+    # Compared to OE-core, this replaces "compat" with "files altfiles",
+    # and adds "altfiles" as fallback elsewhere.
+    # "netgroup: nis" got removed without replacement.
+    cat >${IMAGE_ROOTFS}${datadir}/defaults/etc/nsswitch.conf <<EOF
+passwd:         files altfiles
+group:          files altfiles
+shadow:         files altfiles
+
+hosts:          files altfiles dns
+networks:       files altfiles
+
+protocols:      db files altfiles
+services:       db files altfiles
+ethers:         db files altfiles
+rpc:            db files altfiles
+EOF
+}
+
+STATELESS_ALTFILES = "services protocols rpc passwd group shadow"
+
+STATELESS_MV_ROOTFS += " \
+    ${@ ' '.join('%s=${datadir}/defaults/%s' % (x,x) for x in d.getVar('STATELESS_ALTFILES', True).split())} \
+"
+#STATELESS_ETC_WHITELIST += " \
+#    ${STATELESS_ALTFILES} \
+#"
+
+STATELESS_RM_ROOTFS += " \
+    ${@ ' '.join(x + '-' for x in d.getVar('STATELESS_ALTFILES', True).split())} \
+"
+
+# TODO: add "hosts" to STATELESS_ALTFILES
+# Doing so causes some systemd weirdness:
+# systemd[1]: -.mount: Directory / to mount over is not empty, mounting anyway.
+# systemd[1]: Mounting /...
+#          Mounting /...
+# systemd[1]: Reached target Sockets.
+# [  OK  ] Reached target Sockets.
+# [FAILED] Failed to mount /.
+# systemd[1]: -.mount: Mount process exited, code=exited status=32
+# systemd[1]: Failed to mount /.
+# See 'systemctl status -.mount' for details.
+# systemd[1]: Dependency failed for Basic System.
+STATELESS_ETC_WHITELIST += "hosts"
+
+# TODO: is this really used?
+STATELESS_ETC_WHITELIST += " \
+    gshadow \
+    gshadow- \
+"
