@@ -151,7 +151,7 @@ python () {
 # All further modifications in ROOTFS_POSTPROCESS_COMMAND and
 # later then may use /etc again (like setting an empty
 # root password in /etc/passwd).
-ROOTFS_POSTINSTALL_COMMAND += "stateless_mangle_rootfs"
+ROOTFS_POSTINSTALL_COMMAND += "stateless_mangle_rootfs;"
 python stateless_mangle_rootfs () {
     pn = d.getVar('PN', True)
     if pn in (d.getVar('STATELESS_PN_WHITELIST', True) or '').split():
