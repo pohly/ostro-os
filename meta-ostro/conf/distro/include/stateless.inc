@@ -34,6 +34,15 @@ STATELESS_RM = ""
 STATELESS_RM_ROOTFS = ""
 STATELESS_MV_ROOTFS = ""
 
+# This entry here allows everything in /etc.
+# It's useful while working on stateless configuration
+# because it removes the need to update STATELESS_ETC_WHITELIST
+# more selectively, which triggers a repackaging and thus
+# slows down development cycles.
+#
+# TODO: comment out in final patch set.
+STATELESS_ETC_WHITELIST += "*"
+
 ############################################################################
 
 # Only used in initramfs, can be ignored.
