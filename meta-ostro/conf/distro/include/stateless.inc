@@ -373,32 +373,23 @@ rpc:            db files altfiles
 EOF
 }
 
-STATELESS_ALTFILES = "services protocols rpc passwd group shadow"
+STATELESS_ALTFILES = " \
+    group \
+    hosts \
+    passwd \
+    protocols \
+    rpc \
+    services \
+    shadow \
+"
 
 STATELESS_MV_ROOTFS += " \
-    ${@ ' '.join('%s=${datadir}/defaults/%s' % (x,x) for x in d.getVar('STATELESS_ALTFILES', True).split())} \
+    ${@ ' '.join('%s=${datadir}/defaults/etc/%s' % (x,x) for x in d.getVar('STATELESS_ALTFILES', True).split())} \
 "
-#STATELESS_ETC_WHITELIST += " \
-#    ${STATELESS_ALTFILES} \
-#"
 
 STATELESS_RM_ROOTFS += " \
     ${@ ' '.join(x + '-' for x in d.getVar('STATELESS_ALTFILES', True).split())} \
 "
-
-# TODO: add "hosts" to STATELESS_ALTFILES
-# Doing so causes some systemd weirdness:
-# systemd[1]: -.mount: Directory / to mount over is not empty, mounting anyway.
-# systemd[1]: Mounting /...
-#          Mounting /...
-# systemd[1]: Reached target Sockets.
-# [  OK  ] Reached target Sockets.
-# [FAILED] Failed to mount /.
-# systemd[1]: -.mount: Mount process exited, code=exited status=32
-# systemd[1]: Failed to mount /.
-# See 'systemctl status -.mount' for details.
-# systemd[1]: Dependency failed for Basic System.
-STATELESS_ETC_WHITELIST += "hosts"
 
 # TODO: is this really used?
 STATELESS_ETC_WHITELIST += " \
