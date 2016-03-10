@@ -147,11 +147,31 @@ python () {
 # /etc/passwd - adduser in postinst extends it
 # /etc/systemd/system - has several .wants entries
 #
-# This gets fixed directly after installing packages.
-# All further modifications in ROOTFS_POSTPROCESS_COMMAND and
-# later then may use /etc again (like setting an empty
-# root password in /etc/passwd).
-ROOTFS_POSTINSTALL_COMMAND += "stateless_mangle_rootfs;"
+# We fix this directly after the write_image_manifest command
+# in the ROOTFS_POSTUNINSTALL_COMMAND.
+#
+# However, that is very late, so changes made by a ROOTFS_POSTPROCESS_COMMAND
+# (like setting an empty root password) become part of the system,
+# which might not be intended in all cases.
+#
+# It would be better to do this directly after installing with
+# ROOTFS_POSTINSTALL_COMMAND += "stateless_mangle_rootfs;"
+# However, opkg then becomes unhappy and causes failures in the
+# *_manifest commands which get executed later:
+#
+# ERROR: Cannot get the installed packages list. Command '.../opkg -f .../ostro-image-minimal/1.0-r0/opkg.conf -o .../ostro-image-minimal/1.0-r0/rootfs  --force_postinstall --prefer-arch-to-version   status' returned 0 and stderr:
+# Collected errors:
+#  * file_md5sum_alloc: Failed to open file .../ostro-image-minimal/1.0-r0/rootfs/etc/hosts: No such file or directory.
+#
+# ERROR: Function failed: write_package_manifest
+#
+# TODO: why does opkg complain? /etc/hosts is listed in CONFFILES of netbase,
+# so it should be valid to remove it. If we can fix that and ensure that
+# all /etc files are marked as CONFFILES (perhaps by adding that as
+# default for all packages), then we can use ROOTFS_POSTINSTALL_COMMAND
+# again.
+ROOTFS_POSTUNINSTALL_COMMAND_append = "stateless_mangle_rootfs;"
+
 python stateless_mangle_rootfs () {
     pn = d.getVar('PN', True)
     if pn in (d.getVar('STATELESS_PN_WHITELIST', True) or '').split():
