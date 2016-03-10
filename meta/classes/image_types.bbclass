@@ -16,7 +16,7 @@ def imagetypes_getdepends(d):
                 deps.append(i)
 
     deps = []
-    ctypes = d.getVar('COMPRESSIONTYPES', True).split()
+    ctypes = set(d.getVar('COMPRESSIONTYPES', True).split())
     for type in (d.getVar('IMAGE_FSTYPES', True) or "").split():
         if type in ["vmdk", "vdi", "qcow2", "hdddirect", "live", "iso", "hddimg"]:
             type = "ext4"
