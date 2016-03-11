@@ -24,11 +24,7 @@
 #   This is required to identify it and pass its Partition UUID to the kernel, for booting.
 
 
-COMPRESSIONTYPES_append = " vdi"
-COMPRESS_CMD_vdi = "qemu-img convert -O vdi ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type} ${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.${type}.vdi"
-COMPRESS_DEPENDS_vdi = "qemu-native"
-
-IMAGE_DSK_ACTIVE = "${@ bool([x for x in d.getVar('IMAGE_FSTYPES', True).split() if x == 'dsk' or x.startswith('dsk.')])}"
+IMAGE_DSK_ACTIVE = "${@ 'True' if image_type_active('dsk', d) else 'False' }"
 python () {
     if d.getVar('IMAGE_DSK_ACTIVE', True) == 'True':
         d.setVar('IMAGE_NAME_SUFFIX', '')
