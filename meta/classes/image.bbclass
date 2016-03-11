@@ -123,6 +123,13 @@ do_rootfs[vardeps] += "${@rootfs_variables(d)}"
 
 do_build[depends] += "virtual/kernel:do_deploy"
 
+def image_type_active(type, d):
+    '''True if any entry in IMAGE_FSTYPES is type or depends on it.'''
+    for entry in d.getVar("IMAGE_FSTYPES", True).split():
+        if entry == type or entry.startswith(type + "."):
+            return True
+    return False
+
 def build_live(d):
     if bb.utils.contains("IMAGE_FSTYPES", "live", "live", "0", d) == "0": # live is not set but hob might set iso or hddimg
         d.setVar('NOISO', bb.utils.contains('IMAGE_FSTYPES', "iso", "0", "1", d))
@@ -135,7 +142,7 @@ def build_live(d):
 IMAGE_TYPE_live = "${@build_live(d)}"
 inherit ${IMAGE_TYPE_live}
 
-IMAGE_TYPE_vm = '${@bb.utils.contains_any("IMAGE_FSTYPES", ["vmdk", "vdi", "qcow2", "hdddirect"], "image-vm", "", d)}'
+IMAGE_TYPE_vm = '${@ "image-vm" if image_type_active("hdddirect", d) else ""}'
 inherit ${IMAGE_TYPE_vm}
 
 def image_split_type(type, allctypes):
@@ -392,9 +399,7 @@ python () {
         cmds = []
         subimages = []
         realt = t
-
-        if t in maskedtypes:
-            continue
+        ismasked = t in maskedtypes
 
         localdata = bb.data.createCopy(d)
         debug = ""
@@ -412,12 +417,14 @@ python () {
         localdata.delVar('DATETIME')
         localdata.delVar('TMPDIR')
 
-        image_cmd = localdata.getVar("IMAGE_CMD", True)
-        vardeps.add('IMAGE_CMD_' + realt)
-        if image_cmd:
-            cmds.append("\t" + image_cmd)
-        else:
-            bb.fatal("No IMAGE_CMD defined for IMAGE_FSTYPES entry '%s' - possibly invalid type name or missing support class" % t)
+        if not ismasked:
+            image_cmd = localdata.getVar("IMAGE_CMD", True)
+            vardeps.add('IMAGE_CMD_' + realt)
+            if image_cmd:
+                cmds.append("\t" + image_cmd)
+            else:
+                bb.fatal("No IMAGE_CMD defined for IMAGE_FSTYPES entry '%s' - possibly invalid type name or missing support class" % t)
+
         cmds.append(localdata.expand("\tcd ${DEPLOY_DIR_IMAGE}"))
 
         rm_tmp_images = set()
@@ -455,17 +462,41 @@ python () {
 
         t = t.replace("-", "_").replace(".", "_")
 
-        d.setVar('do_image_%s' % t, '\n'.join(cmds))
-        d.setVarFlag('do_image_%s' % t, 'func', '1')
-        d.setVarFlag('do_image_%s' % t, 'fakeroot', '1')
-        d.setVarFlag('do_image_%s' % t, 'prefuncs', debug + 'set_image_size')
-        d.setVarFlag('do_image_%s' % t, 'postfuncs', 'create_symlinks')
-        d.setVarFlag('do_image_%s' % t, 'subimages', ' '.join(subimages))
-        d.appendVarFlag('do_image_%s' % t, 'vardeps', ' '.join(vardeps))
-        d.appendVarFlag('do_image_%s' % t, 'vardepsexclude', 'DATETIME')
+        if ismasked:
+            # If the type is masked, then some unknown task (for example,
+            # do_bootdirectdisk in boot-directdisk.bbclass for IMAGE_FSTYPES hdddirect)
+            # will create the actual base image. All we know is that the files will
+            # be there right before do_image_complete. So in that case we put the
+            # conversion commands into a do_image_complete prefunc. The 'after'
+            # dependencies can be ignored because we are guaranteed to run after
+            # all of them, and the conversion dependencies are dealt with
+            # by making do_rootfs depend on them.
+            d.setVar('image_%s_conversion' % t, '\n'.join(cmds))
+            d.setVarFlag('image_%s_conversion' % t, 'func', '1')
+            d.setVarFlag('image_%s_conversion' % t, 'fakeroot', '1')
+            d.appendVarFlag('image_%s_conversion' % t, 'vardeps', ' '.join(vardeps))
+            d.appendVarFlag('image_%s_conversion' % t, 'vardepsexclude', 'DATETIME')
+            prefuncs = set((d.getVarFlag('do_image_complete', 'prefuncs', True) or '').split())
+            prefuncs.add('image_%s_conversion' % t)
+            # create_symlinks must run after the commands which create the real files
+            # because create_symlinks checks for them.
+            prefuncs.discard('create_symlinks')
+            d.setVarFlag('do_image_complete', 'prefuncs', ' '.join(sorted(prefuncs)) + ' create_symlinks')
+            d.appendVarFlag('do_image_complete', 'subimages', ' ' + ' '.join(subimages))
+        else:
+            # If not masked, we generate a new task which executes the image
+            # creation and the conversion commands.
+            d.setVar('do_image_%s' % t, '\n'.join(cmds))
+            d.setVarFlag('do_image_%s' % t, 'func', '1')
+            d.setVarFlag('do_image_%s' % t, 'fakeroot', '1')
+            d.setVarFlag('do_image_%s' % t, 'prefuncs', debug + 'set_image_size')
+            d.setVarFlag('do_image_%s' % t, 'postfuncs', 'create_symlinks')
+            d.setVarFlag('do_image_%s' % t, 'subimages', ' '.join(subimages))
+            d.appendVarFlag('do_image_%s' % t, 'vardeps', ' '.join(vardeps))
+            d.appendVarFlag('do_image_%s' % t, 'vardepsexclude', 'DATETIME')
 
-        bb.debug(2, "Adding type %s before %s, after %s" % (t, 'do_image_complete', after))
-        bb.build.addtask('do_image_%s' % t, 'do_image_complete', after, d)
+            bb.debug(2, "Adding type %s before %s, after %s" % (t, 'do_image_complete', after))
+            bb.build.addtask('do_image_%s' % t, 'do_image_complete', after, d)
 }
 
 #
