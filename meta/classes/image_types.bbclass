@@ -9,32 +9,6 @@ IMAGE_NAME_SUFFIX ??= ".rootfs"
 # set this value to 2048 (2MiB alignment).
 IMAGE_ROOTFS_ALIGNMENT ?= "1"
 
-def imagetypes_getdepends(d):
-    def adddep(depstr, deps):
-        for i in (depstr or "").split():
-            if i not in deps:
-                deps.append(i)
-
-    deps = []
-    ctypes = set(d.getVar('COMPRESSIONTYPES', True).split())
-    for type in (d.getVar('IMAGE_FSTYPES', True) or "").split():
-        if type in ["vmdk", "vdi", "qcow2", "hdddirect", "live", "iso", "hddimg"]:
-            type = "ext4"
-        basetype = type
-        for ctype in ctypes:
-            if type.endswith("." + ctype):
-                basetype = type[:-len("." + ctype)]
-                adddep(d.getVar("COMPRESS_DEPENDS_%s" % ctype, True), deps)
-                break
-        for typedepends in (d.getVar("IMAGE_TYPEDEP_%s" % basetype, True) or "").split():
-            adddep(d.getVar('IMAGE_DEPENDS_%s' % typedepends, True) , deps)
-        adddep(d.getVar('IMAGE_DEPENDS_%s' % basetype, True) , deps)
-
-    depstr = ""
-    for dep in deps:
-        depstr += " " + dep + ":do_populate_sysroot"
-    return depstr
-
 XZ_COMPRESSION_LEVEL ?= "-e -6"
 XZ_INTEGRITY_CHECK ?= "crc32"
 XZ_THREADS ?= "-T 0"
@@ -237,6 +211,14 @@ IMAGE_DEPENDS_ubi = "mtd-utils-native"
 IMAGE_DEPENDS_ubifs = "mtd-utils-native"
 IMAGE_DEPENDS_multiubi = "mtd-utils-native"
 IMAGE_DEPENDS_wic = "parted-native"
+
+# Same dependencies as in ext4. image_getdepends() shouldn't
+# have to hard-code this, so just define it normally in
+# variables.
+IMAGE_DEPENDS_live = "${IMAGE_DEPENDS_ext4}"
+IMAGE_DEPENDS_iso = "${IMAGE_DEPENDS_ext4}"
+IMAGE_DEPENDS_hddimg = "${IMAGE_DEPENDS_ext4}"
+
 
 # This variable is available to request which values are suitable for IMAGE_FSTYPES
 IMAGE_TYPES = " \
