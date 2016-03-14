@@ -293,16 +293,38 @@ STATELESS_MV_pn-audit = " \
 "
 FILES_${PN}_append_pn-audit = " ${libdir}/tmpfiles.d"
 
-# TODO: check that atop works without config
+# atop is dropping files to crond and logrotate dirs,
+# so those files are also moved because we are moving
+# also logrotate and crond themselves.
 STATELESS_MV_pn-atop = " \
     atop \
     tmpfiles.d=${libdir}/tmpfiles.d \
+    cron.d=${datadir}/defaults/etc/cron.d \
+    logrotate.d=${datadir}/defaults/etc/logrotate.d \
 "
-FILES_${PN}_append_pn-atop = " ${libdir}/tmpfiles.d"
 
-# Same for cron and logrotate (used by atop).
-STATELESS_ETC_WHITELIST += "cron.d/*"
-STATELESS_ETC_WHITELIST += "logrotate.d/*"
+FILES_${PN}_append_pn-atop = " \
+    ${libdir}/tmpfiles.d \
+    ${datadir}/defaults/etc/cron.d \
+    ${datadir}/defaults/etc/logrotate.d \
+"
+
+# Move logrotate out of etc and modify the hard
+# coded path in logrotate.conf
+STATELESS_RELOCATE_pn-logrotate = "${datadir}/defaults/etc"
+do_install_append_pn-logrotate() {
+    sed -i -e 's,^.*include.*,include ${sysconfdir}/logrotate.d,g' ${D}${sysconfdir}/logrotate.conf
+}
+
+# Move crond out of etc and modify the hard
+# coded path in crond.service. Had to use workdir
+# because cronie recipe has already install_append and
+# stateless.inc seems to be running before that (so the
+# file is not yet in systemd dir)
+STATELESS_RELOCATE_pn-cronie = "${datadir}/defaults/etc"
+do_install_append_pn-cronie() {
+    sed -i -e 's,^.*Environment.*,EnvironmentFile=${sysconfdir}/sysconfig/crond,g' ${WORKDIR}/crond.service
+}
 
 # Move v86d (only module in qemu build). Systemd is
 # trying to read the module conf from many places,
