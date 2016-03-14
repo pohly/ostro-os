@@ -300,14 +300,22 @@ STATELESS_MV_pn-atop = " \
 "
 FILES_${PN}_append_pn-atop = " ${libdir}/tmpfiles.d"
 
-# TODO: figure out what handles /etc/modules-load.d,
-# add /usr/lib/modules-load.d as alternative,
-# move files (like uvesafb.conf from v86d) there.
-STATELESS_ETC_WHITELIST += "modules-load.d/*"
-
 # Same for cron and logrotate (used by atop).
 STATELESS_ETC_WHITELIST += "cron.d/*"
 STATELESS_ETC_WHITELIST += "logrotate.d/*"
+
+# Move v86d (only module in qemu build). Systemd is
+# trying to read the module conf from many places,
+# one of them is libdir. These outside kernel compiled
+# modules should work with just moving, inside kernel
+# modules are split only after compile to move doesn't
+# directly work in those (couple of those present in x86).
+# modules-load.d dir itself is created in many recipes like
+# systemd and kernel and it is not trivial to remove it.
+# stateless.inc should however remove it when etc is otherwise
+# empty.
+STATELESS_MV_pn-v86d = "modules-load.d=${libdir}/modules-load.d"
+FILES_${PN}_append_pn-v86d = " ${libdir}/modules-load.d"
 
 # Locally managed by systemd.
 STATELESS_ETC_WHITELIST += "machine-id"
