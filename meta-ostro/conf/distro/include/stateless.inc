@@ -78,7 +78,22 @@ STATELESS_MV_pn-base-files = " \
     nsswitch.conf=${datadir}/defaults/etc/nsswitch.conf \
 "
 
-# /etc/fstab is required because without it, / remains read-only.
+# Ostro OS boots without /etc/fstab. This only works
+# when mounting the root filesystem already rw in the
+# initramfs, because without an entry for the rootfs
+# in /etc/fstab, systemd won't remount a read-only
+# rootfs as rw and booting (currently) fails.
+#
+# This skips fsck. This may or may not be desirable (see
+# "[Ostro-dev] usefulness of fsck"). If it turns out
+# to be desirable, then creating a mount unit for the
+# rootfs might help.
+#
+# Additional mounts can also be handled that way, should
+# they become necesary.
+APPEND_append = " rw"
+APPEND_remove = "ro"
+STATELESS_MV_ROOTFS += "fstab"
 STATELESS_ETC_WHITELIST += "fstab"
 
 # TODO: systemd must be patched to load Smack rules also from elsewhere
