@@ -137,6 +137,14 @@ STATELESS_RM_pn-tzdata = " \
     localtime \
 "
 
+# Ostro OS treats /usr/lib/locale/locale-archive as read-only part of
+# the image, with content determined by IMAGE_LINGUAS. Local
+# administrators cannot change this.
+#
+# This differs from Clear Linux, where /usr/lib/locale/locale-archive
+# is a symlink to /var/cache/locale/locale-archive and the latter
+# gets created at runtime via locale-archive-trigger.service.
+
 # Whether the netbase files (services, protocols, hosts, rpc) need to
 # be relocated depends on the image. It will be done during image
 # creation.
