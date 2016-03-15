@@ -178,7 +178,7 @@ python stateless_mangle_rootfs () {
         return
 
     rootfsdir = d.getVar('IMAGE_ROOTFS', True)
-    docdir = rootfsdir + d.getVar('datadir') + '/doc/etc'
+    docdir = rootfsdir + d.getVar('datadir', True) + '/doc/etc'
     whitelist = (d.getVar('STATELESS_ETC_WHITELIST', True) or '').split()
     stateless_mangle(d, rootfsdir, docdir,
                      (d.getVar('STATELESS_MV_ROOTFS', True) or '').split(),
