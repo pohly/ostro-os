@@ -112,23 +112,49 @@ STATELESS_RM_pn-os-release = " \
     os-release \
 "
 
-# TODO: /etc/ssl - populated by ca-certificates and used by gnutls, openssl, etc.
-# If nothing really needs the combined /etc/ssl/ca-certificates.crt, perhaps
-# we can replaced "trusted certificates are those in /etc/ssl" with
-# "everything in /usr/share/ca-certificates", like Clear Linux does it?
+# SSL certificates still come from ca-certificates, but the
+# update-ca-certificates, its ca-certificates.conf and the
+# entire resulting output under /etc/ssl get removed after
+# creating the rootfs, so /etc/ssl/ca-certificates.crt is gone.
 #
-# But then how can the local admin remove or replace certificates?
-# Perhaps keep update-ca-certificates, but patch the system so that generated
-# files are ephemeral (/run/ssl) and get populated on each boot?
-# /etc/ca-certificates.conf has to be come optional, i.e. if not present,
-# use everything under /usr/share/ca-certificates.
+# What is used instead (via configure parameters, where necessary,
+# and sometimes supported by additional patches):
+# - /usr/share/ca-certificates has all certificates trusted by the
+#   system
+# - The optional /etc/ssl/cert.pem is a full trust store which can
+#   add or revoke certificates (?).
 #
-#EXTRA_OECONF_append_pn-gnutls = "${@bb.utils.contains('DISTRO_FEATURES', 'stateless', \
-#  '--with-default-trust-store-file=${sysconfdir}/ssl/cert.pem --with-default-trust-store-dir=${datadir}/ca-certificates', \
-#  '', d)}"
-#STATELESS_RM_pn-ca-certificates = " \
-#    ca-certificates.conf \
-#"
+# Clear Linux instructions for maintaining SSL certificates via
+# /etc are out-dated (still explain about a /etc/ssl/certs directory,
+# which is no longer in used because its content was moved to
+# /usr/share/ca-certs). Nothing describes how to use /etc/ssl/cert.pem
+# and it remains unclear whether it can really be used to revoke
+# certificates. Most likely this would require additional tooling.
+#
+# TODO: it seems easier to make update-ca-certificates stateless:
+# - move /etc/ssl/certs/ca-certificates.crt to /var/ssl/certs/ca-certificates.crt
+# - make /etc/ca-certificates.conf optional
+# - support /usr/share/defaults/etc/update.d in addition to
+#   /etc/ca-certificates/update.d (if we ever need it for system plugins)
+EXTRA_OECONF_append_pn-gnutls = " \
+    --with-default-trust-store-file=${sysconfdir}/ssl/cert.pem \
+    --with-default-trust-store-dir=${datadir}/ca-certificates \
+"
+EXTRA_OECONF_append_pn-curl = " \
+    --with-ca-path=${datadir}/ca-certificates \
+    --with-ca-bundle=${sysconfdir}/ssl/cert.pem \
+"
+# PACKAGES_prepend_pn-ca-certificates = " \
+#     ${PN}-update-ca-certificates \
+# "
+# FILES_${PN}-update-ca-certificates = " \
+#     ${sysconfdir}/ca-certificates.conf \
+#     ${sbindir}/update-ca-certificates \
+# "
+STATELESS_RM_ROOTFS += " \
+    ssl \
+    ../${sbindir}/update-ca-certificates \
+"
 STATELESS_ETC_WHITELIST += "ca-certificates.conf"
 STATELESS_ETC_DIR_WHITELIST += "ssl/*"
 
