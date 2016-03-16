@@ -13,6 +13,7 @@ def stateless_is_whitelisted(etcentry, whitelist):
 def stateless_mangle(d, root, docdir, stateless_mv, stateless_rm, dirwhitelist, is_package):
     import os
     import errno
+    import shutil
 
     # Move away files. Default target is docdir, but others can
     # be set by appending =<new name> to the entry, as in
@@ -45,7 +46,10 @@ def stateless_mangle(d, root, docdir, stateless_mv, stateless_rm, dirwhitelist, 
         old = os.path.join(root, 'etc', entry)
         if os.path.exists(old) or os.path.islink(old):
             bb.note('stateless: removing %s' % old)
-            os.unlink(old)
+            if os.path.isdir(old) and not os.path.islink(old):
+                shutil.rmtree(old)
+            else:
+                os.unlink(old)
 
     # Remove /etc if all that's left are directories.
     # Some directories are expected to exists (for example,
