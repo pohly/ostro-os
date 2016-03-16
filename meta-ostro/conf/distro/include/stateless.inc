@@ -1,5 +1,11 @@
 INHERIT += "stateless"
 
+# Package QA check which greps for known bad paths which should
+# not be used anymore, like files which used to be in /etc and
+# got moved elsewhere.
+STATELESS_DEPRECATED_PATHS = ""
+ERROR_QA += "stateless"
+
 # If set to True, a recipe gets configured with
 # sysconfdir=${datadir}/defaults. If set to a path, that
 # path is used instead. In both cases, /etc typically gets
