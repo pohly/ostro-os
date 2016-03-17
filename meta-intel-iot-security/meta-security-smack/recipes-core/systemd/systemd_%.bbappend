@@ -39,6 +39,10 @@ file://0005-tizen-smack-Handling-network-v228.patch \
 file://mount-setup.c-fix-handling-of-symlink-Smack-labellin-v228.patch \
 "
 
+SYSTEMD_SMACK_PATCHES_229 = " \
+file://0001-core-smack-add-support-for-defining-smack-rules-path-v229.patch \
+"
+
 # From Tizen .spec file.
 EXTRA_OECONF_append_smack = " --with-smack-run-label=System"
 
