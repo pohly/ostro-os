@@ -16,26 +16,33 @@ to verify the authenticity of their peer when connecting to a remote
 server. node.js uses openssl and thus also uses the system
 certificates.
 
-Ostro OS uses ca-certificates from OpenEmbedded without
-modifications. ca-certificates itself is taken by OE from Debian,
-which in turn contains certificates as maintained by the Mozilla
-foundation for the Firefox browser. All of these certificates are
-enabled in Ostro OS.
+Ostro OS uses the ``ca-certificates`` package from OpenEmbedded, which
+in turn takes it from Debian. This package contains a set SSL CA
+certificates (maintained by the Mozilla Foundation, with a few
+modifications applied by Debian) and the ``update-ca-certificates``
+tool for managing the actual set of certificates that are used by
+the system.
 
-These certificates are installed in ``/usr/share/ca-certificates``
-by the ca-certificates package's 
-``update-ca-certificates`` tool. That tool maintains
-``/etc/ssl/certs`` containing both individual certificates in ``.pem``
-format and a single ``certificates.crt``. Some of the consumers of
-these certificates need the ``.pem`` files, while others need
-``certificates.crt``.
+Certificates are installed in ``/usr/share/ca-certificates`` (provided
+by the OS) or ``/etc/ca-certificates/certs`` (added by a local
+administrator). However, applications and libraries are configured to
+use a combined ``/var/ssl/certs/ca-certificates.crt`` or the
+certificates linked to in ``/var/ssl/certs``. This represents the set
+of certificates which are considered as trusted.
+
+``update-ca-certificates`` is used to generate the content of
+``/var/ssl/certs``. In Ostro, the default is to trust all installed
+certificates. The optional ``/etc/ca-certificates.conf`` can be used to
+exclude certificates that otherwise would be trusted, like this ::
+
+   !mozilla/foobar.crt
 
 
 Managing custom SSL certificates
 --------------------------------
 
 You should package new ``.crt`` files so they get installed under
-``/usr/local/share/ca-certificates``, depend on ca-certificates, and
+``/usr/share/ca-certificates``, depend on ca-certificates, and
 call ``update-ca-certificates`` in postinst and postrm scripts. Adding
 or removing that package then will update the system SSL certificates
 accordingly. Because the Ostro OS does not support individual packages in
@@ -44,19 +51,17 @@ of an image.
 
 Alternatively, certificates can also be modified directly without
 packaging them, if the process manipulating
-``/usr/local/share/ca-certificates`` and calling
+``/etc/ca-certificates/certs`` and calling
 ``update-ca-certificates`` has write access to that directory and
-``/etc/ssl/certs``. However, in the recommended security configuration
-of Ostro OS that directory is not writable, so in practice updating
-certificates on a device has to be done via an OS update.
+``/var/ssl/certs``.
 
 Removing system SSL certificates
 --------------------------------
 
 In a ``ca-certificates_%.bbappend`` configuration file, you can extend
-``do_install()`` to make further modifications to
-``${D}${sysconfdir}/ca-certificates.conf`` before the ca-certificate
-package gets created.
+``do_install()`` to remove certificates from
+``${D}${datadir}/ca-certificates`` before the ca-certificate package
+gets created.
 
 
 IMA/EVM and image signing

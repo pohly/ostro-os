@@ -138,28 +138,59 @@ STATELESS_RM_pn-os-release = " \
 # certificates. Most likely this would require additional tooling.
 #
 # TODO: it seems easier to make update-ca-certificates stateless:
-# - move /etc/ssl/certs/ca-certificates.crt to /var/ssl/certs/ca-certificates.crt
+# - move /etc/ssl/certs to /var/ssl/certs
 # - make /etc/ca-certificates.conf optional
+# - support /etc/ca-certificates/certs instead of /usr/local/share/ca-certificates
+#   (because /usr/local is not supported for local administration)
 # - support /usr/share/defaults/etc/update.d in addition to
 #   /etc/ca-certificates/update.d (if we ever need it for system plugins)
-EXTRA_OECONF_append_pn-gnutls = " \
-    --with-default-trust-store-file=${sysconfdir}/ssl/cert.pem \
-    --with-default-trust-store-dir=${datadir}/ca-certificates \
+STATELESS_FIX_SSL_PATHS = " \
+    sed -i \
+        -e 's;${sysconfdir}/ssl/certs;${localstatedir}/ssl/certs;g' \
+        -e 's;/usr/local/share/ca-certificates;/etc/ca-certificates/certs;g' \
 "
+do_install_append_pn-ca-certificates_class-target () {
+    ${STATELESS_FIX_SSL_PATHS}  \
+        ${D}/${mandir}/man8/update-ca-certificates.8
+}
 EXTRA_OECONF_append_pn-curl = " \
-    --with-ca-path=${datadir}/ca-certificates \
-    --with-ca-bundle=${sysconfdir}/ssl/cert.pem \
+    --with-ca-bundle=${localstatedir}/ssl/certs/ca-certificates.crt \
 "
-# PACKAGES_prepend_pn-ca-certificates = " \
-#     ${PN}-update-ca-certificates \
-# "
-# FILES_${PN}-update-ca-certificates = " \
-#     ${sysconfdir}/ca-certificates.conf \
-#     ${sbindir}/update-ca-certificates \
-# "
+EXTRA_OECONF_remove_pn-curl = " \
+    --with-ca-bundle=${sysconfdir}/ssl/certs/ca-certificates.crt \
+"
+stateless_patch_ssl_paths () {
+    ${STATELESS_FIX_SSL_PATHS} \
+        ${STATELESS_SSL_PATHS_TO_PATCH}
+}
+STATELESS_SSL_PATHS_TO_PATCH = ""
+STATELESS_SSL_PATHS_TO_PATCH_pn-perl_class-target = " \
+    $(find ${S} -name Tiny.pm) \
+"
+STATELESS_SSL_PATHS_TO_PATCH_pn-wget_class-target = " \
+    ${S}/src/gnutls.c \
+"
+STATELESS_SSL_PATHS_TO_PATCH_pn-wpa-supplicant_class-target = " \
+    ${S}/wpa_supplicant/wpa_supplicant.conf \
+    ${S}/src/eap_peer/eap_config.h \
+    ${WORKDIR}/wpa_supplicant.conf \
+"
+STATELESS_SSL_PATHS_TO_PATCH_pn-connman_class-target = " \
+    ${S}/doc/connman-service.config.5.in \
+"
+STATELESS_SSL_PATHS_TO_PATH_pn-ca-certificates_class_target = " \
+    ${S}/sbin/update-ca-certificates.8 \
+"
+do_patch[postfuncs] += "${@ 'stateless_patch_ssl_paths' if '${STATELESS_SSL_PATHS_TO_PATCH}' else ''}"
+STATELESS_DEPRECATED_PATHS += "${sysconfdir}/ssl/certs"
+STATELESS_MV_ROOTFS += " \
+    ssl/certs=${localstatedir}/ssl/certs \
+"
+# The file is a complete list of all certificates provided by the system
+# and therefore redundant, because those certificates are trusted even
+# if not listed explicitly.
 STATELESS_RM_ROOTFS += " \
-    ssl \
-    ../${sbindir}/update-ca-certificates \
+    ca-certificates.conf \
 "
 STATELESS_ETC_WHITELIST += "ca-certificates.conf"
 STATELESS_ETC_DIR_WHITELIST += "ssl/*"
