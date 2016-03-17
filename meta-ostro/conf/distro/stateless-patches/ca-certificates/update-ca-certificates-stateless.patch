@@ -1,0 +1,85 @@
+From 41148638d0bf833a7883842d3c4699e632178282 Mon Sep 17 00:00:00 2001
+From: Patrick Ohly <patrick.ohly@intel.com>
+Date: Thu, 17 Mar 2016 11:49:56 +0100
+Subject: [PATCH] update-ca-certificates: stateless
+
+Re-configure update-ca-certificates such that it uses paths suitable
+for a stateless distro (/etc/ca-certificates/certs for admin-installed
+certificates, /var/ssl instead of /etc/ssl) and ensure that all
+system-installed certificates are used even when the (now optional)
+/etc/ca-certificates.conf is missing.
+
+To clean up dangling symlinks, always invoke with --fresh.
+
+Upstream-Status: Inappropriate [configuration]
+
+Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+---
+ sbin/update-ca-certificates | 30 ++++++++++++++++++++++--------
+ 1 file changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/sbin/update-ca-certificates b/sbin/update-ca-certificates
+index ae9e3f1..05ef432 100755
+--- a/sbin/update-ca-certificates
++++ b/sbin/update-ca-certificates
+@@ -26,9 +26,9 @@ fresh=0
+ default=0
+ CERTSCONF=$SYSROOT/etc/ca-certificates.conf
+ CERTSDIR=$SYSROOT/usr/share/ca-certificates
+-LOCALCERTSDIR=$SYSROOT/usr/local/share/ca-certificates
++LOCALCERTSDIR=$SYSROOT/etc/ca-certificates/certs
+ CERTBUNDLE=ca-certificates.crt
+-ETCCERTSDIR=$SYSROOT/etc/ssl/certs
++ETCCERTSDIR=$SYSROOT/var/ssl/certs
+ HOOKSDIR=$SYSROOT/etc/ca-certificates/update.d
+ 
+ while [ $# -gt 0 ];
+@@ -99,15 +99,11 @@ if [ -z "$SYSROOT" ]; then
+   fi
+ fi
+ 
+-if [ ! -s "$CERTSCONF" ]
+-then
+-  fresh=1
+-fi
+-
+ cleanup() {
+   rm -f "$TEMPBUNDLE"
+   rm -f "$ADDED"
+   rm -f "$REMOVED"
++  rm -f "$FULLCERTSCONF"
+ }
+ trap cleanup 0
+ 
+@@ -116,9 +112,27 @@ trap cleanup 0
+ TEMPBUNDLE="$(mktemp -p${TMPDIR:-/tmp} "${CERTBUNDLE}.tmp.XXXXXX")"
+ ADDED="$(mktemp -p${TMPDIR:-/tmp} "ca-certificates.tmp.XXXXXX")"
+ REMOVED="$(mktemp -p${TMPDIR:-/tmp} "ca-certificates.tmp.XXXXXX")"
++FULLCERTSCONF="$(mktemp -p${TMPDIR:-/tmp} "ca-certificates.conf.tmp.XXXXXX")"
++
++# Prepare a complete list of certificates, then use the original code.
++(cd "$CERTSDIR"; find * -name '*.crt') | sort | while read cert
++do
++    # Must not add a cert if it was blacklisted in the user-provided
++    # ca-certificates.conf or already included there (the latter would
++    # lead to duplicate entries in the combined .crt).
++    if [ ! -s "$CERTSCONF" ] || ! grep -q -e "^!$cert" -e "^$cert" "$CERTSCONF"; then
++        # All other installed certs are trusted.
++        echo "$cert" >> "$FULLCERTSCONF"
++    fi
++done
++if [ -s "$CERTSCONF" ]
++then
++    cat "$CERTSCONF" >> "$FULLCERTSCONF"
++fi
++CERTSCONF="$FULLCERTSCONF"
+ 
+ # Adds a certificate to the list of trusted ones.  This includes a symlink
+-# in /etc/ssl/certs to the certificate file and its inclusion into the
++# in /var/ssl/certs to the certificate file and its inclusion into the
+ # bundle.
+ add() {
+   CERT="$1"
+-- 
+2.1.4
+
