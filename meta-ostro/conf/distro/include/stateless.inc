@@ -82,6 +82,7 @@ STATELESS_MV_pn-base-files = " \
     skel \
     default \
     nsswitch.conf=${datadir}/defaults/etc/nsswitch.conf \
+    smack=${datadir}/defaults/etc/smack \
 "
 
 # Ostro OS boots without /etc/fstab. This only works
@@ -102,9 +103,14 @@ APPEND_remove = "ro"
 STATELESS_MV_ROOTFS += "fstab"
 STATELESS_ETC_WHITELIST += "fstab"
 
-# TODO: systemd must be patched to load Smack rules also from elsewhere
-# than /etc/smack.
 STATELESS_ETC_WHITELIST += "smack/*"
+# Smack default configurations from base-files have
+# been moved away from /etc. Systemd has been patched
+# so that we can give default rules path to its configure.
+# Patch should still always look also from /etc the
+# existence of locally configured rules which are
+# read in addition to possible default rules
+EXTRA_OECONF_append_pn-systemd = " --with-smack-default-rules-path=${datadir}/defaults/etc"
 
 # nscd support is disabled via patch.
 STATELESS_RM_pn-glibc = " \

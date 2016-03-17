@@ -1,0 +1,209 @@
+From a79adffc7b77879cbc7b8c6615736a398fbb3cdd Mon Sep 17 00:00:00 2001
+From: Jaska Uimonen <jaska.uimonen@intel.com>
+Date: Wed, 16 Mar 2016 15:12:09 +0200
+Subject: [PATCH] core/smack: add support for defining smack rules path in
+ configure
+
+This patch is made for enabling smack to read its rules also from
+somewhere else than the hard coded /etc. The goal is to enable
+some variant of "stateless" distro where things should work at
+least somehow even if /etc is empty. In this case it is possible
+to configure the smack rules in the default dir, /etc or both.
+
+Upstream-Status: Pending
+
+Signed-off-by: Jaska Uimonen <jaska.uimonen@intel.com>
+---
+ configure.ac           |  10 +++++
+ src/core/smack-setup.c | 118 +++++++++++++++++++++++++++++++------------------
+ 2 files changed, 86 insertions(+), 42 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 5fd73c5..cbed0df 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -694,6 +694,15 @@ AS_HELP_STRING([--with-smack-default-process-label=STRING],
+         [AC_DEFINE_UNQUOTED(SMACK_DEFAULT_PROCESS_LABEL, ["$withval"], [Default SMACK label for executed processes])],
+         [])
+ 
++AC_ARG_WITH(smack-default-rules-path,
++AS_HELP_STRING([--with-smack-default-rules-path=STRING],
++        [default path for SMACK rules]),
++        [DEFAULT_SMACK_RULES_PATH="$withval"],
++        [DEFAULT_SMACK_RULES_PATH="/etc"])
++
++AC_DEFINE_UNQUOTED(DEFAULT_SMACK_RULES_PATH, [$DEFAULT_SMACK_RULES_PATH], [Default path for SMACK rules])
++AC_SUBST(DEFAULT_SMACK_RULES_PATH)
++
+ # ------------------------------------------------------------------------------
+ AC_ARG_ENABLE([gcrypt],
+         AS_HELP_STRING([--disable-gcrypt],[Disable optional GCRYPT support]),
+@@ -1607,6 +1616,7 @@ AC_MSG_RESULT([
+         Maximum System UID:      ${SYSTEM_UID_MAX}
+         Maximum System GID:      ${SYSTEM_GID_MAX}
+         Certificate root:        ${CERTIFICATEROOT}
++        Smack rules path:        ${DEFAULT_SMACK_RULES_PATH}
+ 
+         CFLAGS:                  ${OUR_CFLAGS} ${CFLAGS}
+         CPPFLAGS:                ${OUR_CPPFLAGS} ${CPPFLAGS}
+diff --git a/src/core/smack-setup.c b/src/core/smack-setup.c
+index 0c26e85..96a115c 100644
+--- a/src/core/smack-setup.c
++++ b/src/core/smack-setup.c
+@@ -35,9 +35,20 @@
+ #include "smack-setup.h"
+ #include "string-util.h"
+ #include "util.h"
++#include "strv.h"
+ 
+ #ifdef HAVE_SMACK
+ 
++#ifndef STRINGIFY
++#  define STRINGIFY(foo) #foo
++#endif
++
++#define PATH_SMACK_RULES "/smack/accesses.d/"
++#define PATH_CIPSO_RULES "/smack/cipso.d/"
++#define PATH_NETLABEL_RULES "/smack/netlabel.d/"
++
++#define PATH_SMACK_ETC "/etc"
++
+ static int write_access2_rules(const char* srcdir) {
+         _cleanup_close_ int load2_fd = -1, change_fd = -1;
+         _cleanup_closedir_ DIR *dir = NULL;
+@@ -133,6 +144,7 @@ static int write_cipso2_rules(const char* srcdir) {
+         int r = 0;
+ 
+         cipso2_fd = open("/sys/fs/smackfs/cipso2", O_RDWR|O_CLOEXEC|O_NONBLOCK|O_NOCTTY);
++
+         if (cipso2_fd < 0)  {
+                 if (errno != ENOENT)
+                         log_warning_errno(errno, "Failed to open '/sys/fs/smackfs/cipso2': %m");
+@@ -271,23 +283,41 @@ int mac_smack_setup(bool *loaded_policy) {
+ #ifdef HAVE_SMACK
+ 
+         int r;
++        _cleanup_strv_free_ char **smackpaths = NULL;
++        _cleanup_strv_free_ char **cipsopaths = NULL;
++        _cleanup_strv_free_ char **netlabelpaths = NULL;
++        char **smackpath;
++        char **cipsopath;
++        char **netlabelpath;
+ 
+         assert(loaded_policy);
+ 
+-        r = write_access2_rules("/etc/smack/accesses.d/");
+-        switch(r) {
+-        case -ENOENT:
+-                log_debug("Smack is not enabled in the kernel.");
+-                return 0;
+-        case ENOENT:
+-                log_debug("Smack access rules directory '/etc/smack/accesses.d/' not found");
+-                return 0;
+-        case 0:
+-                log_info("Successfully loaded Smack policies.");
+-                break;
+-        default:
+-                log_warning_errno(r, "Failed to load Smack access rules, ignoring: %m");
+-                return 0;
++        smackpaths = strv_new(strappend(STRINGIFY(DEFAULT_SMACK_RULES_PATH), PATH_SMACK_RULES), NULL);
++        cipsopaths = strv_new(strappend(STRINGIFY(DEFAULT_SMACK_RULES_PATH), PATH_CIPSO_RULES), NULL);
++        netlabelpaths = strv_new(strappend(STRINGIFY(DEFAULT_SMACK_RULES_PATH), PATH_NETLABEL_RULES), NULL);
++
++        if (strcmp(STRINGIFY(DEFAULT_SMACK_RULES_PATH), PATH_SMACK_ETC)) {
++                strv_extend(&smackpaths, strappend(PATH_SMACK_ETC, PATH_SMACK_RULES));
++                strv_extend(&cipsopaths, strappend(PATH_SMACK_ETC, PATH_CIPSO_RULES));
++                strv_extend(&netlabelpaths, strappend(PATH_SMACK_ETC, PATH_NETLABEL_RULES));
++        }
++
++        STRV_FOREACH(smackpath, smackpaths) {
++                r = write_access2_rules(*smackpath);
++                switch(r) {
++                case -ENOENT:
++                        log_debug("Smack is not enabled in the kernel.");
++                        return 0;
++                case ENOENT:
++                        log_debug("Smack access rules directory %s not found", *smackpath);
++                        continue;
++                case 0:
++                        log_info("Successfully loaded Smack policies.");
++                        continue;
++                default:
++                        log_warning_errno(r, "Failed to load Smack access rules, ignoring: %m");
++                        return 0;
++                }
+         }
+ 
+ #ifdef SMACK_RUN_LABEL
+@@ -306,36 +336,40 @@ int mac_smack_setup(bool *loaded_policy) {
+                 log_warning_errno(r, "Failed to set SMACK netlabel rule \"127.0.0.1 -CIPSO\": %m");
+ #endif
+ 
+-        r = write_cipso2_rules("/etc/smack/cipso.d/");
+-        switch(r) {
+-        case -ENOENT:
+-                log_debug("Smack/CIPSO is not enabled in the kernel.");
+-                return 0;
+-        case ENOENT:
+-                log_debug("Smack/CIPSO access rules directory '/etc/smack/cipso.d/' not found");
+-                break;
+-        case 0:
+-                log_info("Successfully loaded Smack/CIPSO policies.");
+-                break;
+-        default:
+-                log_warning_errno(r, "Failed to load Smack/CIPSO access rules, ignoring: %m");
+-                break;
++        STRV_FOREACH(cipsopath, cipsopaths) {
++                r = write_cipso2_rules(*cipsopath);
++                switch(r) {
++                case -ENOENT:
++                        log_debug("Smack/CIPSO is not enabled in the kernel.");
++                        return 0;
++                case ENOENT:
++                        log_debug("Smack/CIPSO access rules directory %s not found", *cipsopath);
++                        continue;
++                case 0:
++                        log_info("Successfully loaded Smack/CIPSO policies.");
++                        continue;
++                default:
++                        log_warning_errno(r, "Failed to load Smack/CIPSO access rules, ignoring: %m");
++                        return 0;
++                }
+         }
+ 
+-        r = write_netlabel_rules("/etc/smack/netlabel.d/");
+-        switch(r) {
+-        case -ENOENT:
+-                log_debug("Smack/CIPSO is not enabled in the kernel.");
+-                return 0;
+-        case ENOENT:
+-                log_debug("Smack network host rules directory '/etc/smack/netlabel.d/' not found");
+-                break;
+-        case 0:
+-                log_info("Successfully loaded Smack network host rules.");
+-                break;
+-        default:
+-                log_warning_errno(r, "Failed to load Smack network host rules: %m, ignoring.");
+-                break;
++        STRV_FOREACH(netlabelpath, netlabelpaths) {
++                r = write_netlabel_rules(*netlabelpath);
++                switch(r) {
++                case -ENOENT:
++                        log_debug("Smack/CIPSO is not enabled in the kernel.");
++                        return 0;
++                case ENOENT:
++                        log_debug("Smack network host rules directory %s not found", *netlabelpath);
++                        continue;
++                case 0:
++                        log_info("Successfully loaded Smack network host rules.");
++                        continue;
++                default:
++                        log_warning_errno(r, "Failed to load Smack network host rules: %m, ignoring.");
++                        return 0;
++                }
+         }
+ 
+         *loaded_policy = true;
+-- 
+2.5.0
+
