@@ -10,11 +10,23 @@ IMAGE_INSTALL = " \
                 ${OSTRO_IMAGE_EXTRA_INSTALL} \
 		"
 
+# Certain keywords, like "iotivity" are used in different contexts:
+# - as image feature name
+# - as bundle name
+# - optional: as additional image suffix
+#
+# While this keeps the names short, it can also be a bit confusing and
+# makes some of the definitions below look redundant. They are needed,
+# though, because the naming convention could also be different.
+
 # Image features sometimes affect image building (for example,
 # ima enables image signing) and/or adds certain packages
 # via FEATURE_PACKAGES.
 #
-# TODO: document IoT specific image feature somewhere. Here?
+# TODO: document all relevant (not just IoT) image features
+# in building-images.rst.
+#
+# swupd = install swupd client and enabled generation of swupd bundles
 IMAGE_FEATURES[validitems] += " \
     app-privileges \
     autologin \
@@ -43,86 +55,99 @@ IMAGE_FEATURES[validitems] += " \
     tools-profile \
 "
 
-# Temporary variant for swupd.
-# Currently swupd is not compatible with ima and smack,
-# so disable them. This can be removed once they can coexist.
-IMAGE_VARIANT[swupd] = " \
-    no-smack \
-    no-ima \
-"
-
-# Temporary variant for swupd.
-# Currently swupd is not compatible with ima and smack,
-# so disable them. This can be removed once they can coexist.
-IMAGE_VARIANT[swupddev] = " \
-    no-smack \
-    no-ima \
-    ptest-pkgs \
-    tools-debug \
-    tools-develop \
-    tools-profile \
-"
-
-# "dev" images have the following features turned on.
-# ptests are enabled because (platform) developers might want
-# to run them and because it is a relatively small change which
-# avoids unnecessary proliferation of image variations that
-# need to be built automatically.
-IMAGE_VARIANT[dev] = " \
-    ptest-pkgs \
-    tools-debug \
-    tools-develop \
-    tools-profile \
-    soletta-tools \
-"
-
-# "minimal" images are the opposite of the "dev" images:
-# all non-essential features are turned off, while keeping
-# security features turned on.
-IMAGE_VARIANT[minimal] = " \
-    no-can \
-    no-devkit \
-    no-iotivity \
-    no-node-runtime \
-    no-python-runtime \
-    no-soletta \
-    no-soletta-tools \
-    no-qatests \
-    no-java-jdk \
-    ${OSTRO_EXTRA_MINIMAL_IMAGE_FEATURES} \
-"
-OSTRO_EXTRA_MINIMAL_IMAGE_FEATURES ?= ""
-
-# Default list of features in "ostro-image" images. Additional
-# image variations modify this list, see BBCLASSEXTEND below.
-# OSTRO_EXTRA_IMAGE_FEATURES can be used to add more features
-# to the default list.
+# The default "ostro-image" is very minimal. It's content determines
+# the "core-os" swupd bundle which always must be present on a
+# device. All additional components must be added explicitly to the
+# image by setting OSTRO_EXTRA_IMAGE_FEATURES or
+# OSTRO_IMAGE_EXTRA_INSTALL (making it part of the core-os bundle and
+# the "ostro-os" images) or by defining additional bundles via
+# SWUPD_BUNDLES.
+#
 IMAGE_FEATURES += " \
-                        can \
-                        connectivity \
-                        devkit \
-                        ${@bb.utils.contains('DISTRO_FEATURES', 'ima', 'ima', '', d)} \
-                        iotivity \
-                        ssh-server-openssh \
-                        node-runtime \
-                        qatests \
-                        python-runtime \
-                        java-jdk \
-                        soletta \
-                        ${@bb.utils.contains('DISTRO_FEATURES', 'smack', 'smack', '', d)} \
-                        swupd \
-                        ${OSTRO_EXTRA_IMAGE_FEATURES} \
-                        "
+    ${@bb.utils.contains('DISTRO_FEATURES', 'ima', 'ima', '', d)} \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'smack', 'smack', '', d)} \
+    ${OSTRO_EXTRA_IMAGE_FEATURES} \
+"
 OSTRO_EXTRA_IMAGE_FEATURES ?= ""
 
-
-# Create variants of the base recipe where certain features are
-# turned on or off. The name of these modified recipes are
-# ostro-image-<variant1>-<variant2>-..., for example:
-#   ostro-image-dev
-#   ostro-image-dev-noima (not enabled by default at the moment)
+# This class can be used in two modes:
+# - swupd active => generate additional image recipes like "ostro-image-minimal"
+#                   via SWUPD_IMAGES
+# - swupd not active => generate the same images via image variants
 #
-# These variants are created on-the-fly by the imagevariant.bbclass.
+# These two are mutually exclusive, partly for technical reasons, partly
+# because the usage models are different. Normal developers will probably
+# no enable swupd and instead build images that contain the desired
+# software by customizing the images, whereas a CI system will
+# build images enabled for swupd.
+inherit ${@bb.utils.contains('IMAGE_FEATURES', 'swupd', 'swupd-image', '', d)}
+
+# When enabling the "swupd" image feature, ensure that OS_VERSION is
+# set correctly. The default for local build works, but yields very
+# unpredictable version numbers (see ostro.conf for details).
+#
+# For example, set in local.conf:
+#   OSTRO_EXTRA_IMAGE_FEATURES = "swupd"
+# Then build with:
+#   BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE OS_VERSION" OS_VERSION=100 bitbake ostro-image
+#   BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE OS_VERSION" OS_VERSION=110 bitbake ostro-image
+#   ...
+
+# Define additional bundles. This matches 1:1 to image features
+# which add packages.
+# TODO: auto-generate and remove the duplication?
+SWUPD_BUNDLES ?= " \
+    can \
+    connectivity \
+    devkit \
+    iotivity \
+    java-jdk \
+    node-runtime \
+    python-runtime \
+    ssh-server \
+    soletta \
+    soletta-tools \
+    tools-develop \
+"
+BUNDLE_CONTENTS[can] = "${FEATURE_PACKAGES_can}"
+BUNDLE_CONTENTS[connectivity] = "${FEATURE_PACKAGES_connectivity}"
+BUNDLE_CONTENTS[devkit] = "${FEATURE_PACKAGES_devkit}"
+BUNDLE_CONTENTS[iotivity] = "${FEATURE_PACKAGES_iotivity}"
+BUNDLE_CONTENTS[java-jdk] = "${FEATURE_PACKAGES_java-jdk}"
+BUNDLE_CONTENTS[node-runtime] = "${FEATURE_PACKAGES_node-runtime}"
+BUNDLE_CONTENTS[python-runtime] = "${FEATURE_PACKAGES_python-runtime}"
+BUNDLE_CONTENTS[ssh-server] = "${FEATURE_PACKAGES_ssh-server-openssh}"
+BUNDLE_CONTENTS[soletta] = "${FEATURE_PACKAGES_soletta}"
+BUNDLE_CONTENTS[soletta-tools] = "${FEATURE_PACKAGES_soletta-tools}"
+BUNDLE_CONTENTS[tools-develop] = "${FEATURE_PACKAGES_tools-develop}"
+
+# TODO: qatest bundle once a FEATURES_PACKAGES_qatests is defined (not in master yet).
+
+# When swupd bundles are enabled, choose explicitly which images
+# are created. The "ostro-image" would only have the core-os bundle and
+# thus not be very useful. Instead we want things like "ostro-image-minimal"
+# which also has SSH and "ostro-image-all" which is a complete image.
+SWUPD_IMAGES = "minimal all"
+SWUPD_IMAGES[minimal] = " \
+    connectivity \
+    ssh-server \
+"
+SWUPD_IMAGES[all] = " \
+    ${SWUPD_BUNDLES} \
+"
+
+# The ostro-image.bb can also produces image files. However, it is so
+# minimal in the default configuration that images are not useful, so
+# generating them can be disabled:
+#    OSTRO_VM_IMAGE_TYPES_pn-ostro-image = ""
+#    IMAGE_FSTYPES_pn-ostro-image = ""
+#
+# This is not done by default here because normal developers may still
+# want "ostro-image" images.
+
+# These variants are created on-the-fly by the imagevariant.bbclass
+# when not using swupd.
+#
 # Features preceeded by a "no" or "no-" are explicitly turned off.
 # Features mentioned by name are turned on. All other features are on
 # or off according to the original IMAGE_FEATURES list.
@@ -133,16 +158,46 @@ OSTRO_EXTRA_IMAGE_FEATURES ?= ""
 # be useful and (more important) supported. Users can still enable
 # unsupported variations in the local.conf via OSTRO_EXTRA_IMAGE_VARIANTS.
 OSTRO_EXTRA_IMAGE_VARIANTS ?= ""
-BBCLASSEXTEND = " \
+BBCLASSEXTEND = "${@ bb.utils.contains('IMAGE_FEATURES', 'swupd', '', \
+   ' \
     imagevariant:dev \
     imagevariant:minimal \
-    imagevariant:swupd \
     ${OSTRO_EXTRA_IMAGE_VARIANTS} \
+   ', d)}"
+
+# "dev" images have the following features turned on.
+# ptests are enabled because (platform) developers might want
+# to run them and because it is a relatively small change which
+# avoids unnecessary proliferation of image variations that
+# need to be built automatically.
+IMAGE_VARIANT[dev] = " \
+    app-privileges \
+    can \
+    connectivity \
+    devkit \
+    iotivity \
+    java-jdk \
+    node-runtime \
+    python-runtime \
+    qatests \
+    swupd \
+    soletta \
+    soletta-tools \
+    tools-debug \
+    tools-develop \
+    ptest-pkgs \
+    tools-profile \
+    soletta-tools \
 "
 
-# Once officially supported, variations with IMA disabled can be
-# added. Right now, users need to do that in their local.conf:
-# OSTRO_EXTRA_IMAGE_VARIANTS = "imagevariant:noima imagevariant:dev,noima"
+# "minimal" images are the opposite of the "dev" images:
+# all non-essential features are turned off, while keeping
+# security features turned on.
+IMAGE_VARIANT[minimal] = " \
+    connectivity \
+    ${OSTRO_EXTRA_MINIMAL_IMAGE_FEATURES} \
+"
+OSTRO_EXTRA_MINIMAL_IMAGE_FEATURES ?= ""
 
 # The AppFW depends on the security framework and user management, and these frameworks
 # (currently?) make little sense without apps, therefore a single image feature is used
