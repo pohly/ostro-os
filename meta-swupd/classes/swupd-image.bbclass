@@ -47,7 +47,8 @@
 # some disk space.
 
 DEPLOY_DIR_SWUPDBASE = "${DEPLOY_DIR}/swupd/${MACHINE}"
-SWUPD_ROOTFS_MANIFEST = "${IMAGE_BASENAME}-files-in-image.txt"
+SWUPD_ROOTFS_MANIFEST_SUFFIX = "-files-in-image.txt"
+SWUPD_ROOTFS_MANIFEST = "${PN}${SWUPD_ROOTFS_MANIFEST_SUFFIX}"
 
 # User configurable variables to disable all swupd processing or deltapack
 # generation.
@@ -84,6 +85,15 @@ python () {
     havebundles = (d.getVar('SWUPD_BUNDLES', True) or '') != ''
 
     pn_base = d.getVar('PN_BASE', True)
+    pn = d.getVar('PN', True)
+
+    # We set the path to the rootfs folder of the mega image here so that
+    # it's simple to refer to later
+    megarootfs = d.getVar('IMAGE_ROOTFS', True)
+    if havebundles:
+        megarootfs = megarootfs.replace('/' + pn +'/', '/bundle-%s-mega/' % (pn_base or pn))
+        d.setVar('MEGA_IMAGE_ROOTFS', megarootfs)
+
     if pn_base is not None:
         # We want all virtual images from this recipe to deploy to the same
         # directory
@@ -93,7 +103,11 @@ python () {
 
         # We need all virtual images from this recipe to share the same pseudo
         # database so that permissions are correctly set in the copied bundle
-        # directories when swupd post-processing happens
+        # directories when swupd post-processing happens.
+        #
+        # Because real image building via SWUPD_IMAGES can happen also after
+        # the initial "bitbake <core image>" invocation, we have to keep that
+        # pseudo database around and cannot delete it.
         pseudo_state = d.expand('${TMPDIR}/work-shared/${PN_BASE}/pseudo')
         d.setVar('PSEUDO_LOCALSTATEDIR', pseudo_state)
 
@@ -111,12 +125,6 @@ python () {
         # we try and perform any bundle contents copying for other images
         mega_image = (' bundle-%s-mega:do_image_complete' % pn_base)
         d.appendVarFlag('do_copy_bundle_contents', 'depends', mega_image)
-
-        # We set the path to the rootfs folder of the mega image here so that
-        # it's simple to refer to later.
-        megarootfs = d.getVar('IMAGE_ROOTFS', True)
-        megarootfs = megarootfs.replace(bundle_name, 'mega')
-        d.setVar('MEGA_IMAGE_ROOTFS', megarootfs)
 
         return
 
@@ -148,7 +156,6 @@ python () {
     # bundle contents. Add each virtual image's do_prune_bundle task as a
     # dependency of the base image as we can't generate the update until all
     # dependent images are done with their build, 'chroot' populate and pruning
-    pn = d.getVar('PN', True)
     for bndl in bundles:
         extended.append('swupdbundle:%s' % bndl)
         dep = ' bundle-%s-%s:do_prune_bundle' % (pn, bndl)
@@ -156,6 +163,13 @@ python () {
 
     if havebundles:
         extended.append('swupdbundle:mega')
+
+    # Generate real image files from the core-os bundle plus
+    # certain additional bundles. All of these images can share
+    # the same swupd update stream, the only difference is the
+    # number of pre-installed bundles.
+    for imageext in (d.getVar('SWUPD_IMAGES', True) or '').split():
+        extended.append('swupdimage:%s' % imageext)
 
     d.setVar('BBCLASSEXTEND', ' '.join(extended))
 
@@ -165,26 +179,46 @@ python () {
     if havebundles:
         mega_name = (' bundle-%s-mega:do_image_complete' % pn)
         d.appendVarFlag('do_rootfs', 'depends', mega_name)
-
-    # We set the path to the rootfs folder of the mega image here so that
-    # it's simple to refer to later
-    megarootfs = d.getVar('IMAGE_ROOTFS', True)
-    if havebundles:
-        megarootfs = megarootfs.replace(pn, 'bundle-%s-mega' % pn)
-    d.setVar('MEGA_IMAGE_ROOTFS', megarootfs)
 }
 
 fakeroot do_rootfs_append () {
-    bndl = d.getVar('BUNDLE_NAME', True)
-    if (bndl == 'mega'):
+    bundle = d.getVar('BUNDLE_NAME', True)
+    bundles = ['core-os']
+    if bundle == 'mega':
+        bundles.extend((d.getVar('SWUPD_BUNDLES', True) or '').split())
+    else:
+        bundles.append(bundle)
+    # swupd-client expects a bundle subscription to exist for each
+    # installed bundle. This is simply an empty file named for the
+    # bundle in /usr/share/clear/bundles
+    bundledir = d.expand('${IMAGE_ROOTFS}/usr/share/clear/bundles')
+    bb.utils.mkdirhier(bundledir)
+    for bundle in bundles:
+        open(os.path.join(bundledir, bundle), 'w+b').close()
+}
+
+def swupd_create_rootfs(d):
+    imagefstypes = d.getVar('IMAGE_FSTYPES', d)
+    if not imagefstypes:
+        # Not producing real images, so there's no need to copy
+        # files from the mega image.
         return
+    pn = d.getVar('PN', True)
+    pn_base = d.getVar('PN_BASE', True)
+    imageext = d.getVar('IMAGE_BUNDLE_NAME', True) or ''
 
-    if (bndl == 'os-core' and (d.getVar('SWUPD_BUNDLES', True) or '') != ''):
-        import subprocess
+    import subprocess
 
+    # Sanity checking was already done in swupdimage.bbclass.
+    # Here we can simply use the settings.
+    imagebundles = d.getVarFlag('SWUPD_IMAGES', imageext, True).split() if imageext else []
+    rootfs = d.getVar('IMAGE_ROOTFS', True)
+    rootfs_content = []
+    if not pn_base:
         # For the base image only we need to remove all of the files that were
         # installed during the base do_rootfs and replace them with the
-        # equivelant files from the mega image.
+        # equivelant files from the mega image. The virtual image
+        # recipes will already have an empty rootfs.
         outfile = d.expand('${WORKDIR}/orig-rootfs-manifest.txt')
         rootfs = d.getVar('IMAGE_ROOTFS', True)
         # Generate a manifest of the current file contents
@@ -192,22 +226,29 @@ fakeroot do_rootfs_append () {
         subprocess.call(manifest_cmd, shell=True, stderr=subprocess.STDOUT)
         # Remove the current rootfs contents
         oe.path.remove('%s/*' % rootfs)
-        # Copy all files from the mega bundle
-        oe.path.copytree(d.getVar('MEGA_IMAGE_ROOTFS', True), rootfs)
-        # Prune the items not in the manifest
-        rootfs_contents = []
         for entry in manifest_to_file_list(outfile):
-            rootfs_contents.append(entry[1:])
-        remove_unlisted_files_from_directory(rootfs_contents, rootfs)
+            rootfs_content.append(entry[1:])
         # clean up
         os.unlink(outfile)
+    else:
+        manifest = d.expand("${DEPLOY_DIR_SWUPD}/image/${OS_VERSION}/${PN_BASE}${SWUPD_ROOTFS_MANIFEST_SUFFIX}")
+        for entry in manifest_to_file_list(manifest):
+            rootfs_content.append(entry[1:])
 
-    # swupd-client expects a bundle subscription to exist for each
-    # installed bundle. This is simply an empty file named for the
-    # bundle in /usr/share/clear/bundles
-    bundledir = d.expand('${IMAGE_ROOTFS}/usr/share/clear/bundles')
-    bb.utils.mkdirhier(bundledir)
-    open(os.path.join(bundledir, bndl), 'w+b').close()
+    # Copy all files from the mega bundle...
+    oe.path.copytree(d.getVar('MEGA_IMAGE_ROOTFS', True), rootfs)
+
+    # ... and then remove files again which shouldn't have been copied.
+    for bundle in imagebundles:
+        manifest = d.expand("${DEPLOY_DIR_SWUPD}/image/${OS_VERSION}/bundle-${PN_BASE}-%s${SWUPD_ROOTFS_MANIFEST_SUFFIX}") % bundle
+        for entry in manifest_to_file_list(manifest):
+            rootfs_content.append(entry[1:])
+
+    # Prune the items not in the manifest
+    remove_unlisted_files_from_directory(rootfs_content, rootfs)
+
+do_image_append () {
+    swupd_create_rootfs(d)
 }
 
 # Stage the contents of the generated image rootfs, and a manifest listing all
@@ -317,9 +358,8 @@ def remove_unlisted_files_from_directory (file_list, directory, fullprune=False)
             bb.debug(3, 'Not removing wanted empty directory %s' % d)
 
 fakeroot python do_prune_bundle () {
-    bundle = d.getVar('BUNDLE_NAME', True) or ''
+    bundle = d.getVar('BUNDLE_NAME', True)
     if not bundle:
-        bb.warn('Trying to prune bundle of a non-bundle image: ' % d.getVar('PN', True))
         return
 
     if bundle == 'mega':
@@ -355,8 +395,8 @@ fakeroot python do_prune_bundle () {
 addtask prune_bundle after do_copy_bundle_contents before do_swupd_update
 
 fakeroot do_swupd_update () {
-    if [ ! -z "${PN_BASE}" ]; then
-        bbwarn 'We only generate swupd updates for the base image, skipping ${PN}'
+    if [ -z "${BUNDLE_NAME}" ] || [ ! -z "${PN_BASE}" ] ; then
+        bbwarn 'We only generate swupd updates for the base image, skipping ${PN}:do_swupd_update'
         exit
     fi
 
@@ -465,9 +505,3 @@ SWUPDDEPENDS = "\
 "
 addtask swupd_update after do_image_complete after do_copy_bundle_contents after do_prune_bundle before do_build
 do_swupd_update[depends] = "${SWUPDDEPENDS}"
-
-python rm_shared_pseudodb () {
-    pseudo_state = d.expand('${TMPDIR}/work-shared/${IMAGE_BASENAME}/pseudo')
-    bb.utils.prunedir(pseudo_state)
-}
-do_swupd_update[postfuncs] += "rm_shared_pseudodb"
