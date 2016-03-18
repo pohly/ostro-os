@@ -82,26 +82,32 @@ Base Images
 project. It uses image features (configured via ``IMAGE_FEATURES``) to
 control the content and the image configuration.
 
-Internally, several virtual image variants are created from that base
-recipe. They differ in the set of image features added or removed
-from the base recipe:
+This image recipe can be used in two modes, depending on the ``swupd`` image feature:
 
-ostro-image:
-    The default image. Contains all programming runtimes.
+* swupd active: produces a swupd update stream when building ``ostro-image`` and in
+  addition defines virtual image recipes which produce image files that are
+  compatible with that update stream.
+* swupd not active: this is the traditional way of building images, where
+  variables directly control what goes into the image.
 
-ostro-image-dev:
-    The same as ostro-image, plus build and debugging tools.
+Developers are encouraged to start building images the traditional
+way without swupd and therefore swupd is off by default, because:
 
-ostro-image-minimal:
-    A smaller image which still has the core OS, but none of the
-    optional runtimes.
+a) swupd support is still new and may have unexpected problems.
+b) image and swupd bundle creation cause additional overhead
+   due to the extra work that needs to be done.
 
-Additional image variants can be defined in the ``local.conf``. For
-example, the following adds ``ostro-image-noima`` and
-``ostro-image-dev-noima`` as build targets where IMA is disabled and thus
-no IMA keys are needed::
+The following instructions assume that swupd is not used.
 
-    OSTRO_EXTRA_IMAGE_VARIANTS = "imagevariant:noima imagevariant:dev,noima"
+.. TODO: document how to configure swupd once it is better understood
+   and tested.
+
+.. TODO: create a simple way for developers to build different images
+   with different configuration and content in the same build
+   configuration and document it. Probably need to move all of
+   ostro-image.bb into a ostro-image.bbclass and thus make it possible
+   to write a my-ostro-image.bb which just inherits
+   ostro-image.bbclass and the modifies it.
 
 
 Image Formats for EFI platforms
@@ -156,13 +162,22 @@ features enabled, explicit changes in ``local.conf`` are needed to
 enable them.
 
 Developers building their own images for personal use can follow these
-instructions to replicate the published Ostro OS images. All necessary
+instructions to replicate the configuration of the published Ostro OS images. All necessary
 private keys are provided in the ``ostro-os`` repository.
 
 To do this, before building,  edit the :file:`conf/local.conf` configuration file, 
 find the line
 with ``# require conf/distro/include/ostro-os-development.inc`` and
 uncomment it.
+
+Because the uncustomized ``ostro-image`` does not even provide a way
+to log in, including ``ostro-os-development.inc`` will also extend the
+package selection such that the content matches what gets published as
+the ``ostro-image-reference``. For example, an ssh server gets added.
+If that is not desired, uncomment the lines with::
+
+  OSTRO_DEVELOPMENT_EXTRA_FEATURES = ""
+  OSTRO_DEVELOPMENT_EXTRA_INSTALL = ""
 
 
 Accelerating Build Time Using Shared-State Files Cache
@@ -212,19 +227,6 @@ Extend ``OSTRO_IMAGE_EXTRA_INSTALL`` to install additional packages
 into all Ostro OS image variants, for example with::
 
     OSTRO_IMAGE_EXTRA_INSTALL += "strace"
-
-It is possible to limit the change to specific images. Let's assume
-for example that you want to add strace to your development image (and
-only that one), here is how you can proceed::
-
-    OSTRO_IMAGE_EXTRA_INSTALL_append_pn-ostro-image-dev = " strace"
-
-Beware of the leading space, it is needed when using ``_append``.
-
-This example assumes that :command:`bitbake ostro-image-dev` is used to build
-an image. By making the append conditional on the name of the image,
-different images can be built with different content inside the same
-build configuration.
 
 Alternatively, ``CORE_IMAGE_EXTRA_INSTALL`` can also be used. The
 difference is that this will also affect the initramfs images, which is
