@@ -1,4 +1,6 @@
-VERSION_ID = "${@bb.data.getVar('BUILD_ID',d,1).split('-')[-1].join(['', '0']) }"
+# swupd-client checks VERSION_ID, which must match the OS_VERSION
+# used for generating swupd bundles in the current build.
+VERSION_ID = "${OS_VERSION}"
 
 FILES_${PN}_append = " /usr/lib/os-release "
 
