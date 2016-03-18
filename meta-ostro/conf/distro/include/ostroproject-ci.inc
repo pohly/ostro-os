@@ -31,8 +31,12 @@ SDKMACHINE ?= "x86_64"
 # Generate source mirror tarballs:
 BB_GENERATE_MIRROR_TARBALLS = "1"
 
-# Include the devel settings
+# Configure images in "development mode", but without the additional
+# packages in the ostro-image itself. Instead, swupd images are enabled
+# below.
 require conf/distro/include/ostro-os-development.inc
+OSTRO_DEVELOPMENT_EXTRA_FEATURES = ""
+OSTRO_DEVELOPMENT_EXTRA_INSTALL = ""
 
 # XXX Drop the VM hack after taking care also of the non UEFI devices
 # (those using U-Boot: edison and beaglebone)
@@ -44,14 +48,26 @@ OSTRO_VM_IMAGE_TYPES = "dsk.xz dsk.zip dsk.vdi.zip"
 # which must contain only alphanumeric symbols,'-' and '_'.
 # Any other symbols would be skipped in parser.
 #
-# Following targets would be used to perform default build task:
-OSTROPROJECT_CI_BUILD_TARGETS="${DISTRO}-image ${DISTRO}-image-dev"
+# Following targets would be used to perform default build task.
+OSTROPROJECT_CI_BUILD_TARGETS="ostro-image ostro-image-qa ostro-image-reference"
 # Following targets would be executed with do_populate_sdk task
 OSTROPROJECT_CI_SDK_TARGETS=""
-# Following targets would be executed with do_populate_sdk_ext task
-OSTROPROJECT_CI_ESDK_TARGETS="${DISTRO}-image"
-# Following targets would be executed with do_test_iot_export task
-OSTROPROJECT_CI_TEST_EXPORT_TARGETS="${DISTRO}-image"
+# Following targets would be executed with do_populate_sdk_ext task.
+# Uses the fully-populated image to ensure that the eSDK is as complete
+# as possible.
+OSTROPROJECT_CI_ESDK_TARGETS="ostro-image-all"
+# Following targets would be executed with do_test_iot_export task.
+# Uses ostro-image-qa to be on the safe side (result might depend
+# on image content?), might also work for ostro-image.
+OSTROPROJECT_CI_TEST_EXPORT_TARGETS="ostro-image-qa"
+
+# ostro-image as build target above shall only produce bundles,
+# but no images.
+OSTRO_VM_IMAGE_TYPES_pn-ostro-image = ""
+IMAGE_FSTYPES_pn-ostro-image = ""
+
+# Enable swupd images and bundle creation.
+OSTRO_IMAGE_EXTRA_FEATURES += "swupd"
 
 #
 # Dymamic section.
