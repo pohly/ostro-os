@@ -233,6 +233,8 @@ def swupd_create_rootfs(d):
     rootfs = d.getVar('IMAGE_ROOTFS', True)
     rootfs_contents = []
     if not pn_base:
+        import subprocess
+
         # For the base image only we need to remove all of the files that were
         # installed during the base do_rootfs and replace them with the
         # equivalent files from the mega image.
