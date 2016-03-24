@@ -57,9 +57,8 @@ OSTROPROJECT_CI_SDK_TARGETS=""
 # as possible.
 OSTROPROJECT_CI_ESDK_TARGETS="ostro-image-all"
 # Following targets would be executed with do_test_iot_export task.
-# Uses ostro-image-qa to be on the safe side (result might depend
-# on image content?), might also work for ostro-image.
-OSTROPROJECT_CI_TEST_EXPORT_TARGETS="ostro-image-qa"
+# Must be "ostro-image", the task seems to expect that name.
+OSTROPROJECT_CI_TEST_EXPORT_TARGETS="ostro-image"
 
 # ostro-image as build target above shall only produce bundles,
 # but no images.
