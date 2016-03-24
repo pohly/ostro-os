@@ -24,6 +24,28 @@ IMAGE_INSTALL = " \
 # ima enables image signing) and/or adds certain packages
 # via FEATURE_PACKAGES.
 #
+# This is the list of image features which merely add packages.
+# This list also gets turned into the default set of swupd bundles.
+OSTRO_IMAGE_PKG_FEATURES = " \
+    can \
+    connectivity \
+    devkit \
+    iotivity \
+    java-jdk \
+    node-runtime \
+    nodejs-runtime-tools \
+    python-runtime \
+    qatests \
+    ssh-server \
+    soletta \
+    soletta-tools \
+    tools-debug \
+    tools-develop \
+"
+
+# Here is the complete list of image features, also including
+# those that modify the image configuration.
+#
 # TODO: document all relevant (not just IoT) image features
 # in building-images.rst.
 #
@@ -31,30 +53,10 @@ IMAGE_INSTALL = " \
 IMAGE_FEATURES[validitems] += " \
     app-privileges \
     autologin \
-    can \
-    connectivity \
-    devkit \
     ima \
-    iotivity \
-    java-jdk \
-    node-runtime \
-    nodejs-runtime-tools \
-    python-runtime \
-    qatests \
     smack \
-    soletta \
-    soletta-tools \
     swupd \
-    tools-develop \
-"
-
-# These features come from base recipes, but are not added to
-# IMAGE_FEATURES[validitems]. Should better be fixed there.
-IMAGE_FEATURES[validitems] += " \
-    ptest-pkgs \
-    ssh-server-openssh \
-    tools-debug \
-    tools-profile \
+    ${OSTRO_IMAGE_PKG_FEATURES} \
 "
 
 # The default "ostro-image" is very minimal. Its content determines
@@ -85,23 +87,11 @@ inherit ${@bb.utils.contains('IMAGE_FEATURES', 'swupd', 'swupd-image', '', d)}
 #   ...
 
 # Define additional bundles. This matches 1:1 to image features
-# which add packages. Such image features are not allowed to
-# modify the base OS configuration.
-# TODO: auto-generate and remove the duplication?
+# which add packages (i.e. OSTRO_IMAGE_PKG_FEATURES).
+# In addition, for each of these we also create a development bundle
+# that also contains the development files.
 SWUPD_BUNDLES ?= " \
-    can \
-    connectivity \
-    devkit \
-    iotivity \
-    java-jdk \
-    node-runtime \
-    nodejs-runtime-tools \
-    python-runtime \
-    qatests \
-    ssh-server \
-    soletta \
-    soletta-tools \
-    tools-develop \
+    ${OSTRO_IMAGE_PKG_FEATURES} \
 "
 BUNDLE_CONTENTS[can] = "${FEATURE_PACKAGES_can}"
 BUNDLE_CONTENTS[connectivity] = "${FEATURE_PACKAGES_connectivity}"
@@ -115,7 +105,7 @@ BUNDLE_CONTENTS[qatests] = "${FEATURE_PACKAGES_qatests}"
 BUNDLE_CONTENTS[ssh-server] = "${FEATURE_PACKAGES_ssh-server-openssh}"
 BUNDLE_CONTENTS[soletta] = "${FEATURE_PACKAGES_soletta}"
 BUNDLE_CONTENTS[soletta-tools] = "${FEATURE_PACKAGES_soletta-tools}"
-BUNDLE_CONTENTS[tools-develop] = "${FEATURE_PACKAGES_tools-develop}"
+BUNDLE_CONTENTS[tools-debug] = "${FEATURE_PACKAGES_tools-debug}"
 BUNDLE_CONTENTS[tools-develop] = "${FEATURE_PACKAGES_tools-develop}"
 
 # When swupd bundles are enabled, choose explicitly which images
