@@ -1,0 +1,43 @@
+From 81f31e463bd982a8344ea8681938eb43c9114652 Mon Sep 17 00:00:00 2001
+From: Elliott Hughes <enh@google.com>
+Date: Thu, 18 Feb 2016 16:24:02 -0800
+Subject: [PATCH] Implement "insmod -".
+
+Also use finit_module if available. Given that "insmod -" requires
+init_module, maybe this isn't a worthwhile optimization. Given that
+"insmod /actual/file.ko" is the common use case, maybe it is.
+
+Fix a bug in readfileat where *plen would be corrupted if you didn't supply
+your own buffer (because ibuf is 0 in that case, not a pointer to the start
+of the allocated space).
+
+Upstream-Status: Backport [81f31e46]
+
+Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+
+---
+ lib/lib.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/lib.c b/lib/lib.c
+index e80b8b1..43db2e3 100644
+--- a/lib/lib.c
++++ b/lib/lib.c
+@@ -475,12 +475,12 @@ char *readfileat(int dirfd, char *name, char *ibuf, off_t *plen)
+     rbuf = buf+rlen;
+     len -= rlen;
+   }
+-  *plen = len = rlen+(buf-ibuf);
++  *plen = len = rlen+(rbuf-buf);
+   close(fd);
+ 
+   if (rlen<0) {
+     if (ibuf != buf) free(buf);
+-    buf =  0;
++    buf = 0;
+   } else buf[len] = 0;
+ 
+   return buf;
+-- 
+2.1.4
+

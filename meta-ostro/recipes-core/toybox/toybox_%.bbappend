@@ -11,6 +11,9 @@ SRC_URI += "file://main.c-fix-non-root-usage-when-installed-suid-root.patch"
 # "wait: pid .... is not a child of this shell"
 SRC_URI += "file://Switch-to-for-make.sh-process-enumeration.patch"
 
+# Segfault in login when reading /etc/motd.
+SRC_URI += "file://readfile-readfileat-fix-segfault-when-ibuf-NULL.patch"
+
 DEPENDS_append_smack = " smack attr"
 do_configure_append_smack () {
     # Enable smack in toybox.
