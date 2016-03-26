@@ -42,6 +42,23 @@ OSTRO_DEVELOPMENT_EXTRA_INSTALL = ""
 # (those using U-Boot: edison and beaglebone)
 OSTRO_VM_IMAGE_TYPES = "dsk.xz dsk.zip dsk.vdi.zip"
 
+do_swupd_update_prepend () {
+    # The CI testing setup only knows about testing "ostro-image".
+    # Provide a symlink to the real image that we want to have
+    # tested.
+    if [ "${PN}" = "ostro-image" ]; then
+        bbwarn "Setting up ostro-image CI testing compatibility links"
+        for i in '${IMAGE_NAME}.dsk.xz' '${IMAGE_NAME}-disk-layout.json' 'ostro-image-beaglebone.tar.bz2' 'ostro-image-edison.toflash.tar.bz2'; do
+            if echo $i | grep -q ${MACHINE}; then
+                target=$(echo $i | sed -e 's/ostro-image-/ostro-image-qa-/')
+                bbwarn "symlink ${DEPLOY_DIR_IMAGE}/$i -> $target"
+                mkdir -p "${DEPLOY_DIR_IMAGE}"
+                ln -s "$target" "${DEPLOY_DIR_IMAGE}/$i"
+            fi
+        done
+    fi
+}
+
 #
 # Automated build targets
 # Those targets should be space separated list of items,
