@@ -90,6 +90,14 @@ IMAGE_CMD_toflash () {
 	install ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.ext4	${WORKDIR}/toFlash/${IMAGE_BASENAME}-${MACHINE}.ext4
 	install ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.hddimg	${WORKDIR}/toFlash/${IMAGE_BASENAME}-${MACHINE}.hddimg
 	install ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.update.hddimg	${WORKDIR}/toFlash/${IMAGE_BASENAME}-${MACHINE}.update.hddimg
+        # Create compatibility symlinks for the Ostro OS CI system, which
+        # currently expects to find "ostro-image-edison.ext4" inside the
+        # archive.
+        if [ "${IMAGE_BASENAME}" != "ostro-image" ]; then
+            for i in ext4 hddimg update.hddimg; do
+                ln -s ${IMAGE_BASENAME}-${MACHINE}.$i ${WORKDIR}/toFlash/ostro-image-${MACHINE}.$i
+            done
+        fi
 
 	install ${DEPLOY_DIR_IMAGE}/u-boot-edison.bin		${WORKDIR}/toFlash/
 	install ${DEPLOY_DIR_IMAGE}/u-boot-edison.img		${WORKDIR}/toFlash/
