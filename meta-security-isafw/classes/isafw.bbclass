@@ -158,9 +158,6 @@ python analyse_image() {
     imagebasename = d.getVar('IMAGE_BASENAME', True)
 
     pkglist = manifest2pkglist(d)
-    if pkglist is None:
-        bb.note('Skipping image analysis, no package list.')
-        return
 
     kernelconf = d.getVar('STAGING_KERNEL_BUILDDIR', True) + "/.config"
 
@@ -224,9 +221,6 @@ def isafw_init(isafw, d):
 def manifest2pkglist(d):
 
     manifest_file = d.getVar('IMAGE_MANIFEST', True)
-    if not os.path.exists(manifest_file):
-        bb.note('Image manifest %s not found.' % manifest_file)
-        return None
     imagebasename = d.getVar('IMAGE_BASENAME', True)
     logdir = d.getVar('ISAFW_LOGDIR', True)
 
