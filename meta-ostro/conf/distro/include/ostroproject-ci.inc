@@ -56,7 +56,7 @@ do_swupd_update_prepend () {
         bbwarn "Setting up ostro-image CI testing compatibility links"
         for i in '${IMAGE_NAME}.dsk.xz' '${IMAGE_NAME}-disk-layout.json' 'ostro-image-beaglebone.tar.bz2' 'ostro-image-edison.toflash.tar.bz2'; do
             if echo $i | grep -q ${MACHINE}; then
-                target=$(echo $i | sed -e 's/ostro-image-/ostro-image-qa-/')
+                target=$(echo $i | sed -e 's/ostro-image-/ostro-image-dev-/')
                 bbwarn "symlink ${DEPLOY_DIR_IMAGE}/$i -> $target"
                 mkdir -p "${DEPLOY_DIR_IMAGE}"
                 ln -s "$target" "${DEPLOY_DIR_IMAGE}/$i"
@@ -72,7 +72,7 @@ do_swupd_update_prepend () {
 # Any other symbols would be skipped in parser.
 #
 # Following targets would be used to perform default build task.
-OSTROPROJECT_CI_BUILD_TARGETS="ostro-image ostro-image-qa ostro-image-reference"
+OSTROPROJECT_CI_BUILD_TARGETS="ostro-image ostro-image-dev ostro-image-reference"
 # Following targets would be executed with do_populate_sdk task
 OSTROPROJECT_CI_SDK_TARGETS=""
 # Following targets would be executed with do_populate_sdk_ext task.
