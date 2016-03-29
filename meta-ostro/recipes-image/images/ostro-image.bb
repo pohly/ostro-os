@@ -92,6 +92,7 @@ inherit ${@bb.utils.contains('IMAGE_FEATURES', 'swupd', 'swupd-image', '', d)}
 # that also contains the development files.
 SWUPD_BUNDLES ?= " \
     ${OSTRO_IMAGE_PKG_FEATURES} \
+    ${@ ' '.join([x + '-dev' for x in '${OSTRO_IMAGE_PKG_FEATURES}'.split()])} \
 "
 BUNDLE_CONTENTS[can] = "${FEATURE_PACKAGES_can}"
 BUNDLE_CONTENTS[connectivity] = "${FEATURE_PACKAGES_connectivity}"
@@ -116,35 +117,26 @@ BUNDLE_CONTENTS[tools-develop] = "${FEATURE_PACKAGES_tools-develop}"
 #                         plus connectivity. This is what developers
 #                         are expected to start with when building
 #                         their first image.
-# ostro-image-qa - Image used for testing Ostro OS. Defined here
-#                  temporarily for use in the Ostro CI system until
-#                  the QA team is ready to build images themselves.
+# ostro-image-dev - Image used for testing Ostro OS. Contains most of
+#                   the software pre-installed, including the corresponding
+#                   development files for on-target compilation.
 # ostro-image-all - Contains all defined bundles. Useful as meta target,
 #                   but not guaranteed to build images successfully,
 #                   for example because the content might get too large
 #                   for machines with a fixed image size.
 SWUPD_IMAGES ?= " \
     reference \
-    qa \
+    dev \
     all \
 "
 SWUPD_IMAGES[reference] = " \
     connectivity \
     ssh-server \
 "
-SWUPD_IMAGES[qa] = " \
-    can \
-    connectivity \
-    devkit \
-    iotivity \
-    java-jdk \
-    node-runtime \
-    nodejs-runtime-tools \
-    python-runtime \
-    qatests \
-    ssh-server \
-    soletta \
-    soletta-tools \
+# In practice the same as "all" at the moment, but conceptually different
+# and thus defined separately.
+SWUPD_IMAGES[dev] = " \
+    ${SWUPD_BUNDLES} \
 "
 SWUPD_IMAGES[all] = " \
     ${SWUPD_BUNDLES} \
