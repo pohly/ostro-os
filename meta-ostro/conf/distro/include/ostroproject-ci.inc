@@ -106,6 +106,9 @@ OSTRO_IMAGE_EXTRA_FEATURES += "swupd"
 # to int and back to string acts as sanity check that we really get a
 # number out of the BUILD_ID.
 #
+# BUILD_ID is expected to have this format:
+# BUILD_ID = "<parent-build-timestamp (of Jenkins top job)>" + "-build-" + "<jenkins-top-job-build-number>"
+#
 # We multiply it by ten, to ensure that the version space has some gap
 # for minor updates. How to actually build minor updates with Jenkins
 # still needs to be determined.
@@ -121,8 +124,6 @@ OS_VERSION = "${@ str(int('${BUILD_ID}'.split('-')[-1]) * 10) }"
 # Explicit machine declaration by build job:
 # MACHINE = "$TARGET_MACHINE"
 
-# Build number shared by all jobs across the different machines:
-# BUILD_ID = "<parent-build-timestamp (of Jenkins top job)>" + "-build-" + "<jenkins-top-job-build-number>"
 
 # Shared download directory between builders:
 # DL_DIR = "/srv/bb-cache/ostro-os/sources"
