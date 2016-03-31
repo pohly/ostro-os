@@ -1,4 +1,4 @@
-SUMMARY = "Ostro OS Image."
+# Base class for Ostro images.
 
 OSTRO_IMAGE_EXTRA_INSTALL ?= ""
 IMAGE_INSTALL = " \
@@ -111,7 +111,7 @@ BUNDLE_CONTENTS[tools-develop] = "${FEATURE_PACKAGES_tools-develop}"
 # are created. The "ostro-image" would only have the core-os bundle and
 # thus not be very useful. Instead we pre-define additional
 # images:
-# ostro-image-reference - Base image plus login via getty and ssh,
+# ostro-image-swupd-reference - Base image plus login via getty and ssh,
 #                         plus connectivity. This is what developers
 #                         are expected to start with when building
 #                         their first image.
@@ -146,7 +146,7 @@ SWUPD_IMAGES[all] = " \
 # can be used to select the same content as in the swupd images.
 #
 # Example for local.conf, partly covered already by ostro-development.inc:
-# IMAGE_BASENAME_pn-ostro-image = "my-ostro-image-reference"
+# IMAGE_BASENAME_pn-ostro-image = "my-ostro-image-swupd-reference"
 # OSTRO_IMAGE_EXTRA_INSTALL = "${OSTRO_IMAGE_INSTALL_REFERENCE} my-own-package"
 # OSTRO_IMAGE_EXTRA_FEATURES = "${OSTRO_IMAGE_FEATURES_REFERENCE}"
 
