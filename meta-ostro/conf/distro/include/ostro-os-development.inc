@@ -14,10 +14,12 @@ OSTRO_EXTRA_MOTD () {
 ************************************
 }
 
-# Extend the default package selection and image configuration.
-OSTRO_IMAGE_EXTRA_FEATURES_append = " ${OSTRO_DEVELOPMENT_EXTRA_FEATURES}"
+# Extend the default package selection and image configuration of the
+# no-swupd "ostro-image" to match the content of the swupd
+# "ostro-image-swupd-reference".
+OSTRO_IMAGE_NOSWUPD_EXTRA_FEATURES_append = " ${OSTRO_DEVELOPMENT_EXTRA_FEATURES}"
+OSTRO_IMAGE_NOSWUPD_EXTRA_INSTALL_append = " ${OSTRO_DEVELOPMENT_EXTRA_INSTALL}"
 OSTRO_DEVELOPMENT_EXTRA_FEATURES ?= "${OSTRO_IMAGE_FEATURES_REFERENCE}"
-OSTRO_IMAGE_EXTRA_INSTALL_append = " ${OSTRO_DEVELOPMENT_EXTRA_INSTALL}"
 OSTRO_DEVELOPMENT_EXTRA_INSTALL ?= "${OSTRO_IMAGE_INSTALL_REFERENCE}"
 
 # Everything ready, avoid initial sanity check.

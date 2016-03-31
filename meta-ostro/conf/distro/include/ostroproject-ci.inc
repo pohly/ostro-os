@@ -42,12 +42,8 @@ BB_GENERATE_MIRROR_TARBALLS = "1"
 # constant rebuilds.
 OS_RELEASE_FIELDS_append = " BUILD_ID"
 
-# Configure images in "development mode", but without the additional
-# packages in the ostro-image itself. Instead, swupd images are enabled
-# below.
+# Configure images in "development mode".
 require conf/distro/include/ostro-os-development.inc
-OSTRO_DEVELOPMENT_EXTRA_FEATURES = ""
-OSTRO_DEVELOPMENT_EXTRA_INSTALL = ""
 
 # XXX Drop the VM hack after taking care also of the non UEFI devices
 # (those using U-Boot: edison and beaglebone)
@@ -56,15 +52,16 @@ OSTRO_VM_IMAGE_TYPES = "dsk.xz dsk.zip dsk.vdi.zip dsk.bmap dsk.xz.sha256sum dsk
 do_swupd_update_prepend () {
     # The CI testing setup only knows about testing "ostro-image".
     # Provide a symlink to the real image that we want to have
-    # tested.
-    if [ "${PN}" = "ostro-image" ]; then
+    # tested, which is ostro-image-swupd-dev.
+    if [ "${PN}" = "ostro-image-swupd" ]; then
         bbwarn "Setting up ostro-image CI testing compatibility links"
-        for i in '${IMAGE_NAME}.dsk.xz' '${IMAGE_NAME}-disk-layout.json' 'ostro-image-beaglebone.tar.bz2' 'ostro-image-edison.toflash.tar.bz2'; do
+        for i in '${IMAGE_NAME}.dsk.xz' '${IMAGE_NAME}-disk-layout.json' '${PN}-beaglebone.tar.bz2' '${PN}-edison.toflash.tar.bz2'; do
             if echo $i | grep -q ${MACHINE}; then
-                target=$(echo $i | sed -e 's/ostro-image-/ostro-image-dev-/')
-                bbwarn "symlink ${DEPLOY_DIR_IMAGE}/$i -> $target"
+                target=$(echo $i | sed -e 's/${PN}-/${PN}-dev-/')
+                link=$(echo $i | sed -e 's/${PN}-/ostro-image-/')
+                bbwarn "symlink ${DEPLOY_DIR_IMAGE}/$link -> $target"
                 mkdir -p "${DEPLOY_DIR_IMAGE}"
-                ln -s "$target" "${DEPLOY_DIR_IMAGE}/$i"
+                ln -s "$target" "${DEPLOY_DIR_IMAGE}/$link"
             fi
         done
     fi
@@ -77,29 +74,21 @@ do_swupd_update_prepend () {
 # Any other symbols would be skipped in parser.
 #
 # Following targets would be used to perform default build task.
-OSTROPROJECT_CI_BUILD_TARGETS="ostro-image ostro-image-dev ostro-image-reference"
+OSTROPROJECT_CI_BUILD_TARGETS="ostro-image-noswupd ostro-image-swupd ostro-image-swupd-dev ostro-image-swupd-reference"
 # Following targets would be executed with do_populate_sdk task
 OSTROPROJECT_CI_SDK_TARGETS=""
 # Following targets would be executed with do_populate_sdk_ext task.
 # Uses the fully-populated image to ensure that the eSDK is as complete
 # as possible.
-OSTROPROJECT_CI_ESDK_TARGETS="ostro-image-all"
-# Following targets would be executed with do_test_iot_export task.
-# Must be "ostro-image", the task seems to expect that name.
-OSTROPROJECT_CI_TEST_EXPORT_TARGETS="ostro-image"
+OSTROPROJECT_CI_ESDK_TARGETS="ostro-image-swupd-all"
+# Following targets would be executed with do_test_iot_export task
+# (same image that also later gets tested by the CI system).
+OSTROPROJECT_CI_TEST_EXPORT_TARGETS="ostro-image-swupd-dev"
 # Execute automatic tests for following images with corresponding
 # test suite and test files.
 # Space separated list of tuples, each should in format:
 # <image_name>,<testsuite_name>,<testfiles_name>,$MACHINE
 OSTROPROJECT_CI_TEST_RUNS="${DISTRO}-image,iot-testsuite.tar.gz,iot-testfiles.${MACHINE}.tar.gz,${MACHINE}"
-
-# ostro-image as build target above shall only produce bundles,
-# but no images.
-OSTRO_VM_IMAGE_TYPES_pn-ostro-image = ""
-IMAGE_FSTYPES_pn-ostro-image = ""
-
-# Enable swupd images and bundle creation.
-OSTRO_IMAGE_EXTRA_FEATURES += "swupd"
 
 # In the CI system, the integer OS version used for swupd is derived
 # from the Jenkins build number part of the BUILD_ID. The conversion

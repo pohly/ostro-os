@@ -198,7 +198,7 @@ uncomment it.
 Because the uncustomized ``ostro-image`` does not even provide a way
 to log in, including ``ostro-os-development.inc`` will also extend the
 package selection such that the content matches what gets published as
-the ``ostro-image-reference``. For example, an ssh server gets added.
+the ``ostro-image-swupd-reference``. For example, an ssh server gets added.
 If that is not desired, uncomment the lines with::
 
   OSTRO_DEVELOPMENT_EXTRA_FEATURES = ""
