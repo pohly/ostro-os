@@ -31,6 +31,17 @@ SDKMACHINE ?= "x86_64"
 # Generate source mirror tarballs:
 BB_GENERATE_MIRROR_TARBALLS = "1"
 
+# If (and only if) building in the CI, the BUILD_ID is guaranteed to
+# be consistent across different builds and therefore it can and
+# should be included in the os-release package.
+#
+# When doing the same outside of the CI, we'd end up with an
+# os-release file that has BUILD_ID = ${DATETIME} for the first time
+# that the os-release file was generated. It does not get re-generated
+# (explicit vardepsexclude in os-release.bb) because that would cause
+# constant rebuilds.
+OS_RELEASE_FIELDS_append = " BUILD_ID"
+
 # Configure images in "development mode", but without the additional
 # packages in the ostro-image itself. Instead, swupd images are enabled
 # below.
@@ -104,6 +115,9 @@ OS_VERSION = "${@ str(int('${BUILD_ID}'.split('-')[-1]) * 10) }"
 
 # Explicit machine declaration by build job:
 # MACHINE = "$TARGET_MACHINE"
+
+# Build number shared by all jobs across the different machines:
+# BUILD_ID = "<parent-build-timestamp (of Jenkins top job)>" + "-build-" + "<jenkins-top-job-build-number>"
 
 # Shared download directory between builders:
 # DL_DIR = "/srv/bb-cache/ostro-os/sources"
