@@ -150,6 +150,29 @@ SWUPD_IMAGES[all] = " \
 # OSTRO_IMAGE_EXTRA_INSTALL = "${OSTRO_IMAGE_INSTALL_REFERENCE} my-own-package"
 # OSTRO_IMAGE_EXTRA_FEATURES = "${OSTRO_IMAGE_FEATURES_REFERENCE}"
 
+# Customize priorities of alternative components. See ostro.conf.
+#
+# In general, Busybox or Toybox are preferred over alternatives.
+# The expectation is that either Busybox or Toybox are used, but if
+# both get installed, Toybox is used for those commands that it
+# provides.
+#
+# It is still possible to build images with coreutils providing
+# core system tools, one just has to remove Toybox/Busybox from
+# the image.
+export ALTERNATIVE_PRIORITY_BUSYBOX ?= "200"
+export ALTERNATIVE_PRIORITY_TOYBOX ?= "201"
+export ALTERNATIVE_PRIORITY_BASH ?= "205"
+
+# Both systemd and the efi_combo_updater have problems when
+# "mount" is provided by busybox: systemd fails to remount
+# the rootfs read/write and the updater segfaults because
+# it does not parse the output correctly.
+#
+# For now avoid these problems by sticking to the traditional
+# mount utilities from util-linux.
+export ALTERNATIVE_PRIORITY_UTIL_LINUX ?= "205"
+
 # Currently the definitions of swupd images depend on bundles and thus
 # BUNDLE_CONTENTS. OSTRO_IMAGE_FEATURES are defined as empty in case
 # that this will change in the future.
