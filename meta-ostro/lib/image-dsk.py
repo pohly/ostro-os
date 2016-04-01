@@ -81,7 +81,7 @@ def do_dsk_image():
                      expand_vars('${IMAGE_NAME}-disk-layout.json'))
     disk_layout_file_link = \
         os.path.join(expand_vars("${DEPLOY_DIR_IMAGE}"),
-                     expand_vars('${BPN}-${MACHINE}-disk-layout.json'))
+                     expand_vars('${IMAGE_LINK_NAME}-disk-layout.json'))
     with open(disk_layout_file, 'w') as disk_layout:
         json.dump(obj=partition_table, fp=disk_layout,
                   indent=4, separators=(',', ': '))
@@ -94,7 +94,7 @@ def do_dsk_image():
                      expand_vars('${IMAGE_NAME}.dsk'))
     full_image_name_link = \
         os.path.join(expand_vars("${DEPLOY_DIR_IMAGE}"),
-                     expand_vars('${BPN}-${MACHINE}.dsk'))
+                     expand_vars('${IMAGE_LINK_NAME}.dsk'))
     check_call(['truncate',  '-s', str(full_image_size_mb) + 'M',
                full_image_name])
     check_call(['sgdisk', '-o', full_image_name])
@@ -113,7 +113,7 @@ def do_dsk_image():
             os.path.join(expand_vars("${DEPLOY_DIR_IMAGE}"), partition_name)
         full_partition_name_symlink = \
             os.path.join(expand_vars("${DEPLOY_DIR_IMAGE}"),
-                         expand_vars('${BPN}-${MACHINE}.') + \
+                         expand_vars('${IMAGE_LINK_NAME}.') + \
                          partition_table[key]["name"] + ".part")
         # Create the temporary loop file for hostong the partition.
         check_call(['truncate', '-s', str(partition_size_mb) + 'M',
