@@ -353,9 +353,13 @@ EXTRA_OECONF_append_pn-connman = " --with-dbusconfdir=${datadir} --with-dbusdata
 STATELESS_ETC_WHITELIST += "connman/main.conf"
 STATELESS_MV_pn-connman = " \
     tmpfiles.d=${libdir}/tmpfiles.d \
+    connman=${datadir}/defaults/etc/connman \
 "
 
-FILES_${PN}_append_pn-connman = " ${datadir}/dbus-1 ${libdir}/tmpfiles.d"
+FILES_${PN}_append_pn-connman = " \
+    ${datadir}/dbus-1 ${libdir}/tmpfiles.d \
+    ${datadir}/defaults/etc/connman \
+"
 
 # shadow was patched by Clear Linux such that it uses regular
 # /etc but knows about alt-files in /usr/share/defaults/etc
