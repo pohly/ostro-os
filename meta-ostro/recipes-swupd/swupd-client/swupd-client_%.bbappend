@@ -20,4 +20,7 @@ do_install_append () {
         install -d ${D}/usr/bin
         install ${B}/efi_combo_updater ${D}/usr/bin/
     fi
+
+    # Don't enable check-update.timer by default
+    rm -r ${D}/${systemd_system_unitdir}/multi-user.target.wants
 }
