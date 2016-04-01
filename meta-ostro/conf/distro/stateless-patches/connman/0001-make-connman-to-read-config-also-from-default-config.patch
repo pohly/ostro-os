@@ -1,0 +1,68 @@
+From e54ccf39b3884f55b4972d573cc9422bc0c78c8f Mon Sep 17 00:00:00 2001
+From: Jaska Uimonen <jaska.uimonen@intel.com>
+Date: Tue, 5 Apr 2016 15:27:35 +0300
+Subject: [PATCH] make connman to read config also from default config path
+
+To get connman working with Clear Linux stateless model
+make connman to read also from hard coded default directory
+if the main.conf is not found from sysconfdir. Talking to
+connman developers they did not think this is a way to go
+upstream instead they would like to do this with systemd
+tmpfiles.
+
+Connman is able to start without main.conf altogether so
+in that sense it is already stateless. However the initial
+values might not be sane for basic Ostro functionality. So
+idea with this patch is that system defaults are in
+/usr/share/defaults/etc/connman and local admin values
+are in /etc/connman. Local admin values will override
+system defaults and system defaults will override
+hardcoded values inside connman.
+
+Upstream-Status: Denied
+
+Signed-off-by: Jaska Uimonen <jaska.uimonen@intel.com>
+---
+ src/main.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/src/main.c b/src/main.c
+index e46fa7b..77e3522 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -44,6 +44,7 @@
+ 
+ #define MAINFILE "main.conf"
+ #define CONFIGMAINFILE CONFIGDIR "/" MAINFILE
++#define DEFAULTCONFIGMAINFILE "/usr/share/defaults/etc/connman/" MAINFILE
+ 
+ static char *default_auto_connect[] = {
+ 	"wifi",
+@@ -374,8 +375,10 @@ static int config_init(const char *file)
+ 	config = load_config(file);
+ 	check_config(config);
+ 	parse_config(config);
+-	if (config)
++	if (config) {
+ 		g_key_file_free(config);
++		return 1;
++	}
+ 
+ 	return 0;
+ }
+@@ -648,8 +651,10 @@ int main(int argc, char *argv[])
+ 
+ 	__connman_dbus_init(conn);
+ 
+-	if (!option_config)
+-		config_init(CONFIGMAINFILE);
++	if (!option_config) {
++		if (!config_init(CONFIGMAINFILE))
++			config_init(DEFAULTCONFIGMAINFILE);
++	}
+ 	else
+ 		config_init(option_config);
+ 
+-- 
+2.5.0
+
