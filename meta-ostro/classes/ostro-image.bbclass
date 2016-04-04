@@ -195,7 +195,7 @@ SWUPD_IMAGES[all] = " \
 # the image.
 export ALTERNATIVE_PRIORITY_BUSYBOX ?= "200"
 export ALTERNATIVE_PRIORITY_TOYBOX ?= "201"
-export ALTERNATIVE_PRIORITY_BASH ?= "205"
+# export ALTERNATIVE_PRIORITY_BASH ?= "205"
 
 # Both systemd and the efi_combo_updater have problems when
 # "mount" is provided by busybox: systemd fails to remount
