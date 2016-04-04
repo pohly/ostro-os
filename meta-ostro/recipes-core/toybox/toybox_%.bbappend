@@ -1,18 +1,9 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
-PV = "0.7.0"
-SRC_URI[md5sum] = "d86c78624b47625c2f0fc64eda599443"
-SRC_URI[sha256sum] = "65428816f88ad3fe92b67df86dc05427c8078fe03843b8b9715fdfa6d29c0f97"
-
-# Fixes usage as non-root when installed suid root.
-SRC_URI += "file://main.c-fix-non-root-usage-when-installed-suid-root.patch"
-
-# Fixes a race condition when compiling under load (https://github.com/landley/toybox/issues/24):
-# "wait: pid .... is not a child of this shell"
-SRC_URI += "file://Switch-to-for-make.sh-process-enumeration.patch"
-
-# Segfault in login when reading /etc/motd.
-SRC_URI += "file://readfile-readfileat-fix-segfault-when-ibuf-NULL.patch"
+SRC_URI = "git://github.com/gfto/toybox.git;protocol=https"
+PV = "0.7.0+git-${SRCREV}"
+SRCREV = "9fcaca8434ece1afcc9982c18a86cf12ac9af508"
+S ="${WORKDIR}/git"
 
 DEPENDS_append_smack = " smack attr"
 do_configure_append_smack () {
@@ -59,3 +50,12 @@ do_install_append () {
 # Necessary for building generated/instlist when Smack is enabled.
 HOSTCC="${BUILD_CC} ${BUILD_CFLAGS} ${BUILD_CPPFLAGS} ${BUILD_LDFLAGS}"
 export HOSTCC
+
+# Fix for upstream 0.6.0 .bb: toybox_unstripped -> generated/unstripped/toybox
+do_compile() {
+    oe_runmake generated/unstripped/toybox && cp -a generated/unstripped/toybox toybox_unstripped
+
+    # Create a list of links needed
+    ${HOSTCC} -I . scripts/install.c -o generated/instlist
+    ./generated/instlist long | sed -e 's#^#/#' > toybox.links
+}
