@@ -1,0 +1,10 @@
+[Unit]
+Description=Updates the SSL certificates used by the system
+BindsTo=update-triggers.target
+
+[Install]
+WantedBy=update-triggers.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ca-certificates/update-ca-certificates --fresh
