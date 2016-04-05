@@ -173,6 +173,12 @@ export ALTERNATIVE_PRIORITY_BASH ?= "205"
 # mount utilities from util-linux.
 export ALTERNATIVE_PRIORITY_UTIL_LINUX ?= "205"
 
+# We do not know exactly which util-linux packages will get
+# pulled into bundles, so we have to install all of them
+# also in the os-core. Alternatively we could try to select
+# just mount/umount as overrides for Toybox/Busybox.
+IMAGE_INSTALL += "util-linux"
+
 # Currently the definitions of swupd images depend on bundles and thus
 # BUNDLE_CONTENTS. OSTRO_IMAGE_FEATURES are defined as empty in case
 # that this will change in the future.
