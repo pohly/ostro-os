@@ -300,6 +300,9 @@ STATELESS_MV_pn-systemd = " \
     systemd/timesyncd.conf \
     systemd/user.conf \
 "
+STATELESS_MV_ROOTFS += " \
+    udev/hwdb.bin=${base_libdir}/udev/hwdb/hwdb.bin \
+"
 FILES_${PN}_append_pn-systemd = " ${datadir}/defaults ${datadir}/pam.d ${datadir}/dbus-1"
 
 # A symlink to /etc/systemd/user. Removed without replacement.
