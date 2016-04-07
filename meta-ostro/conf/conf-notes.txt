@@ -1,5 +1,6 @@
 Common targets are:
-    ostro-image (when building without swupd, the default mode)
+    ostro-image-noswupd (when building without swupd,
+                         the recommended mode for local image building)
     ostro-image-swupd-reference (when building with swupd)
 
 We recommend to use VirtualBox if you wish to run an Ostro image in a
