@@ -85,22 +85,20 @@ inherit ${@bb.utils.contains('IMAGE_FEATURES', 'swupd', 'swupd-image', '', d)}
 # because that task can run for a long time without any output.
 SWUPD_LOG_FN ?= "bbplain"
 
-# When enabling the "swupd" image feature, ensure that OS_VERSION is
-# set correctly. The default for local build works, but yields very
+# When using the "swupd" image feature, ensure that OS_VERSION is
+# set as intended. The default for local build works, but yields very
 # unpredictable version numbers (see ostro.conf for details).
 #
-# For example, set in local.conf:
-#   OSTRO_IMAGE_EXTRA_FEATURES = "swupd"
-# Then build with:
-#   BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE OS_VERSION" OS_VERSION=100 bitbake ostro-image
-#   BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE OS_VERSION" OS_VERSION=110 bitbake ostro-image
+# For example, build with:
+#   BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE OS_VERSION" OS_VERSION=100 bitbake ostro-image-swupd
+#   BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE OS_VERSION" OS_VERSION=110 bitbake ostro-image-swupd
 #   ...
 
 # Define additional bundles. This matches 1:1 to image features
 # which add packages (i.e. OSTRO_IMAGE_PKG_FEATURES).
 # In addition, for each of these we also create a development bundle
 # that also contains the development files.
-#SWUPD_BUNDLES ?= " \
+#SWUPD_BUNDLES ??= " \
 #    ${OSTRO_IMAGE_PKG_FEATURES} \
 #    ${@ ' '.join([x + '-dev' for x in '${OSTRO_IMAGE_PKG_FEATURES}'.split()])} \
 #"
@@ -124,7 +122,7 @@ BUNDLE_CONTENTS[tools-interactive] = "${FEATURE_PACKAGES_tools-interactive}"
 # of more than three hours despite reused sstate cache). Let's cut down
 # the number of bundles to something more manageable and increase it again
 # after improving bundle creation performance.
-SWUPD_BUNDLES ?= " \
+SWUPD_BUNDLES ??= " \
     reference \
     full \
     full-dev \
@@ -150,21 +148,23 @@ BUNDLE_CONTENTS[full] = " \
 "
 
 # When swupd bundles are enabled, choose explicitly which images
-# are created. The "ostro-image" would only have the core-os bundle and
-# thus not be very useful. Instead we pre-define additional
-# images:
-# ostro-image-swupd-reference - Base image plus login via getty and ssh,
-#                         plus connectivity. This is what developers
-#                         are expected to start with when building
-#                         their first image.
-# ostro-image-dev - Image used for testing Ostro OS. Contains most of
-#                   the software pre-installed, including the corresponding
-#                   development files for on-target compilation.
-# ostro-image-all - Contains all defined bundles. Useful as meta target,
-#                   but not guaranteed to build images successfully,
-#                   for example because the content might get too large
-#                   for machines with a fixed image size.
-SWUPD_IMAGES ?= " \
+# are created. The base image will only have the core-os bundle and
+# thus might not be very useful. For use in ostro-image-swupd.bb we
+# pre-define additional images:
+# ostro-image-swupd-reference -
+#    Base image plus login via getty and ssh, plus connectivity.
+#    This is what developers  are expected to start with when
+#    building their first image.
+# ostro-image-swupd-dev -
+#    Image used for testing Ostro OS. Contains most of the software
+#    pre-installed, including the corresponding development files
+#    for on-target compilation.
+# ostro-image-swupd-all -
+#    Contains all defined bundles. Useful as meta target, but not
+#    guaranteed to build images successfully, for example because
+#    the content might get too large for machines with a fixed image
+#    size.
+SWUPD_IMAGES ??= " \
     reference \
     dev \
     all \
@@ -187,12 +187,13 @@ SWUPD_IMAGES[all] = " \
 "
 
 # When building without swupd, choose which content is to be included
-# in the image and then build "ostro-image". If the default "ostro-image"
-# name is undesirable, customize it. We provide variables that
-# can be used to select the same content as in the swupd images.
+# in the image. If the default "ostro-image-noswupd" name is
+# undesirable, write a custom image recipe or customize the image file
+# names. We provide variables that can be used to select the same
+# content as in the swupd images.
 #
 # Example for local.conf, partly covered already by ostro-development.inc:
-# IMAGE_BASENAME_pn-ostro-image = "my-ostro-image-swupd-reference"
+# IMAGE_BASENAME_pn-ostro-image-noswupd = "my-ostro-image-reference"
 # OSTRO_IMAGE_EXTRA_INSTALL = "${OSTRO_IMAGE_INSTALL_REFERENCE} my-own-package"
 # OSTRO_IMAGE_EXTRA_FEATURES = "${OSTRO_IMAGE_FEATURES_REFERENCE}"
 
@@ -208,6 +209,7 @@ SWUPD_IMAGES[all] = " \
 # the image.
 export ALTERNATIVE_PRIORITY_BUSYBOX ?= "300"
 export ALTERNATIVE_PRIORITY_TOYBOX ?= "301"
+export ALTERNATIVE_PRIORITY_BASH ?= "305"
 
 # Both systemd and the efi_combo_updater have problems when
 # "mount" is provided by busybox: systemd fails to remount
@@ -236,6 +238,17 @@ def ostro_image_bundles_to_packages (image, d):
 OSTRO_IMAGE_INSTALL_REFERENCE = "${@ostro_image_bundles_to_packages('reference', d)}"
 OSTRO_IMAGE_INSTALL_QA = "${@ostro_image_bundles_to_packages('qa', d)}"
 OSTRO_IMAGE_INSTALL_ALL = "${@ostro_image_bundles_to_packages('all', d)}"
+
+# Create compatibility symlinks for the Ostro OS CI system, which
+# currently expects to find "ostro-image-edison.ext4" inside the
+# archives prepared for Edison.
+IMAGE_CMD_toflash_append () {
+        if [ "${IMAGE_BASENAME}" != "ostro-image" ]; then
+            for i in ext4 hddimg update.hddimg; do
+                ln -s ${IMAGE_BASENAME}-${MACHINE}.$i ${WORKDIR}/toFlash/ostro-image-${MACHINE}.$i
+            done
+        fi
+}
 
 # The AppFW depends on the security framework and user management, and these frameworks
 # (currently?) make little sense without apps, therefore a single image feature is used

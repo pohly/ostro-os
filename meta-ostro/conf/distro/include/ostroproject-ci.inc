@@ -85,7 +85,7 @@ OSTROPROJECT_CI_TEST_EXPORT_TARGETS="ostro-image-swupd-dev"
 # We multiply it by ten, to ensure that the version space has some gap
 # for minor updates. How to actually build minor updates with Jenkins
 # still needs to be determined.
-OS_VERSION = "${@ str(int('${BUILD_ID}'.split('-')[-1]) * 10) }"
+OS_VERSION ?= "${@ str(int('${BUILD_ID}'.split('-')[-1]) * 10) }"
 
 #
 # Dymamic section.
@@ -96,7 +96,6 @@ OS_VERSION = "${@ str(int('${BUILD_ID}'.split('-')[-1]) * 10) }"
 
 # Explicit machine declaration by build job:
 # MACHINE = "$TARGET_MACHINE"
-
 
 # Shared download directory between builders:
 # DL_DIR = "/srv/bb-cache/ostro-os/sources"
