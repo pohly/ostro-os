@@ -9,12 +9,14 @@ production and development images. See the comments in local.conf.sample
 and doc/howtos/building-images.rst.''')
 }
 
-# /run, /var/volatile and /dev only get mounted at runtime.
+# /run, /proc, /var/volatile and /dev only get mounted at runtime.
 OSTRO_QA_IMAGE_SYMLINK_WHITELIST = " \
-    /run/lock \
-    /var/volatile/tmp \
-    /var/volatile/log \
     /dev/null \
+    /proc/mounts \
+    /run/lock \
+    /run/resolv.conf \
+    /var/volatile/log \
+    /var/volatile/tmp \
 "
 
 # Additional image checks.
