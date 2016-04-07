@@ -206,9 +206,8 @@ SWUPD_IMAGES[all] = " \
 # It is still possible to build images with coreutils providing
 # core system tools, one just has to remove Toybox/Busybox from
 # the image.
-export ALTERNATIVE_PRIORITY_BUSYBOX ?= "200"
-export ALTERNATIVE_PRIORITY_TOYBOX ?= "201"
-# export ALTERNATIVE_PRIORITY_BASH ?= "205"
+export ALTERNATIVE_PRIORITY_BUSYBOX ?= "300"
+export ALTERNATIVE_PRIORITY_TOYBOX ?= "301"
 
 # Both systemd and the efi_combo_updater have problems when
 # "mount" is provided by busybox: systemd fails to remount
@@ -217,7 +216,7 @@ export ALTERNATIVE_PRIORITY_TOYBOX ?= "201"
 #
 # For now avoid these problems by sticking to the traditional
 # mount utilities from util-linux.
-export ALTERNATIVE_PRIORITY_UTIL_LINUX ?= "205"
+export ALTERNATIVE_PRIORITY_UTIL_LINUX ?= "305"
 
 # We do not know exactly which util-linux packages will get
 # pulled into bundles, so we have to install all of them
