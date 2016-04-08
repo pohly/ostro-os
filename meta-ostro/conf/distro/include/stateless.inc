@@ -77,13 +77,17 @@ STATELESS_MV_pn-base-files = " \
     issue \
     shells \
     filesystems \
-    motd \
     mtab \
     skel \
     default \
     nsswitch.conf=${datadir}/defaults/etc/nsswitch.conf \
     smack=${datadir}/defaults/etc/smack \
 "
+
+# /usr/share/defaults/etc/motd is handled via a patch to libpam or (if
+# that's used instead) the Toybox login. Both first check /etc, then
+# fall back to /usr.
+STATELESS_MV_pn-base-files += "motd"
 
 # Ostro OS boots without /etc/fstab. This only works
 # when mounting the root filesystem already rw in the
