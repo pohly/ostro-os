@@ -36,7 +36,8 @@ STATELESS_MV = ""
 # entirely.
 STATELESS_RM = ""
 
-# Same as the previous ones, except that they get applied to the rootfs.
+# Same as the previous ones, except that they get applied to the rootfs
+# before running ROOTFS_POSTPROCESS_COMMANDs.
 STATELESS_RM_ROOTFS = ""
 STATELESS_MV_ROOTFS = ""
 
