@@ -125,10 +125,6 @@ STATELESS_RM_pn-glibc = " \
     tmpfiles.d/nscd.conf \
 "
 
-STATELESS_RM_pn-os-release = " \
-    os-release \
-"
-
 # SSL certificates still come from ca-certificates, but the
 # update-ca-certificates, its ca-certificates.conf and the
 # entire resulting output under /etc/ssl get removed after
@@ -530,3 +526,16 @@ STATELESS_ETC_WHITELIST += " \
     gshadow \
     gshadow- \
 "
+
+# Output of image-buildinfo.bbclass will be next to os-release in
+# /usr/lib. Has to be moved by reconfiguring image-buildinfo.bbclass
+# because it gets created after we mangle the rootfs.
+IMAGE_BUILDINFO_FILE = "${libdir}/build"
+STATELESS_DEPRECATED_PATHS += "${sysconfdir}/build"
+
+# os-release itself gets moved to /usr/lib by meta-swupd.
+# /etc/os-release is still valid, it is the admin-modified version
+# that is to be used instead of /usr/lib/os-release if it exists.
+# meta-swupd installs a symlink (sometimes recommended for software
+# which fails to implement the fallback to /usr) that we remove here.
+STATELESS_RM_ROOTFS += "os-release"
