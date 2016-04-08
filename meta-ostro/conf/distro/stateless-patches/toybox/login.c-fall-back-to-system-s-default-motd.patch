@@ -1,0 +1,34 @@
+From 4561bde80235d09fba756ff78a8fe80e46a13d96 Mon Sep 17 00:00:00 2001
+From: Patrick Ohly <patrick.ohly@intel.com>
+Date: Fri, 8 Apr 2016 17:01:37 +0200
+Subject: [PATCH] login.c: fall back to system's default motd
+
+In a stateless distro, /etc is empty and the system defaults for
+aspects typically configured via /etc are under
+/usr/share/defaults/etc instead.
+
+Support that also with pam_motd by first checking /etc and if not
+found, falling back to the system defaults.
+
+Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+---
+ toys/other/login.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/toys/other/login.c b/toys/other/login.c
+index 7f9559a..fc10c75 100644
+--- a/toys/other/login.c
++++ b/toys/other/login.c
+@@ -151,7 +151,8 @@ void login_main(void)
+   setenv("SHELL", pwd->pw_shell, 1);
+ 
+   // Message of the day
+-  if ((ss = readfile("/etc/motd", 0, 0))) {
++  if ((ss = readfile("/etc/motd", 0, 0)) ||
++      (ss = readfile("/usr/share/defaults/etc/motd", 0, 0))) {
+     puts(ss);
+     free(ss);
+   }
+-- 
+2.1.4
+

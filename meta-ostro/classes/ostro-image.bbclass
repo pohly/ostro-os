@@ -543,11 +543,14 @@ local_autologin () {
 }
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('IMAGE_FEATURES', 'autologin', 'local_autologin;', '', d)}"
 
-# Extends the /etc/motd message that is shown on each login.
+# Extends the motd message that is shown on each login.
 # Normally it is empty.
 OSTRO_EXTRA_MOTD ?= ""
 python extra_motd () {
-    with open(d.expand('${IMAGE_ROOTFS}${sysconfdir}/motd'), 'a') as f:
+    import os
+    etcmotd = d.expand('${IMAGE_ROOTFS}/${sysconfdir}/motd')
+    usrmotd = d.expand('${IMAGE_ROOTFS}${datadir}/defaults/etc/motd')
+    with open(etcmotd if os.path.exists(etcmotd) else usrmotd, 'a') as f:
         f.write(d.getVar('OSTRO_EXTRA_MOTD', True))
 }
 ROOTFS_POSTPROCESS_COMMAND += "${@'extra_motd;' if d.getVar('OSTRO_EXTRA_MOTD', True) else ''}"
