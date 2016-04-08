@@ -445,7 +445,8 @@ STATELESS_ETC_WHITELIST += "machine-id"
 # Irrelevant at the moment.
 STATELESS_ETC_WHITELIST += "X11/*"
 
-# Not used. TODO: remove instead.
+# Not used, only relevant when booting with sysvinit.
+STATELESS_RM_ROOTFS += "default/volatiles"
 STATELESS_ETC_WHITELIST += "default/volatiles/*"
 
 # To be fixed later.
