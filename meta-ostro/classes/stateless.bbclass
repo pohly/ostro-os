@@ -154,11 +154,14 @@ def stateless_qa_check_paths(file,name, d, elf, messages):
             package_qa_add_message(messages, "stateless", "%s: %s contains paths deprecated in a stateless configuration: %s" % (name, package_qa_clean_path(file, d), stdout))
 do_package_qa[vardeps] += "stateless_qa_check_paths"
 
-# TODO: modifying SRC_URI here does not seem to invalidate sstate.
-# At least adding or removing patches does not trigger a rebuild.
 python () {
+    # The bitbake cache must be told explicitly that changes in the
+    # directories have an effect on the recipe. Otherwise adding
+    # or removing patches or whole directories does not trigger
+    # re-parsing and re-building.
     import os
     patchdir = d.expand('${STATELESS_PATCHES_BASE}/${PN}')
+    bb.parse.mark_dependency(d, patchdir)
     if os.path.isdir(patchdir):
         patches = os.listdir(patchdir)
         if patches:
@@ -167,6 +170,8 @@ python () {
             srcuri = d.getVar('SRC_URI', True)
             d.setVar('SRC_URI', srcuri + ' ' + ' '.join(['file://' + x for x in sorted(patches)]))
 
+    # Dynamically reconfigure the package to use /usr instead of /etc for
+    # configuration files.
     relocate = d.getVar('STATELESS_RELOCATE', True)
     if relocate != 'False':
         defaultsdir = d.expand('${datadir}/defaults') if relocate == 'True' else relocate
