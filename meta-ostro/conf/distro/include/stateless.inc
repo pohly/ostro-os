@@ -373,6 +373,10 @@ STATELESS_MV_pn-shadow = " \
 "
 FILES_${PN}_append_pn-shadow = " ${datadir}/pam.d"
 
+# /etc/securetty controls which terminals allow root to login. The default (= everything
+# listed via console boot parameters) works fine for Ostro OS, so this is not needed.
+STATELESS_RM_pn-shadow = "securetty"
+
 # TODO: makes these components user-configurable again?
 # libpam has to be relocated so that it matches the Clear Linux patches
 # for shadow.
