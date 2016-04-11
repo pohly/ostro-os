@@ -36,6 +36,13 @@ do_configure_append () {
     sed -e 's/# CONFIG_TR is not set/CONFIG_TR=y/' -i .config
 }
 
+# We need a passwd command which understands the Ostro OS stateless
+# setup. Only passwd from "shadow" works with that at the moment.
+do_configure_append () {
+    sed -e 's/CONFIG_PASSWD=y/# CONFIG_PASSWD is not set/' -i .config
+}
+RDEPENDS_${PN} += "shadow"
+
 # "mesg" is expected by the default .profile. Avoid confusing errors
 # by providing a stub. mesg is used to control whether other users
 # can write to a users terminal. Ostro OS isn't a multi-user, interactive
