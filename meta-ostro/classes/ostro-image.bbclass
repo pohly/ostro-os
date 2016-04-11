@@ -135,6 +135,17 @@ export ALTERNATIVE_PRIORITY_UTIL_LINUX ?= "305"
 # just mount/umount as overrides for Toybox/Busybox.
 IMAGE_INSTALL += "util-linux"
 
+# We need "login" and "passwd" from shadow because:
+# - Busybox "login" does not use PAM and thus would require
+#   separate patching to support stateless motd (patched
+#   in libpam); also the login via getty is different compared
+#   to logins via ssh, which is potentially confusing and thus
+#   should better be avoided (either no PAM, or PAM everywhere).
+# - shadow "passwd" creates /etc/shadow if it does not exist
+#   yet (required when setting the root password).
+export ALTERNATIVE_PRIORITY_SHADOW ?= "305"
+IMAGE_INSTALL += "shadow"
+
 # Additional features and packages used in the base images of
 # ostro-image-swupd.bb and ostro-image-noswupd.bb.
 OSTRO_IMAGE_FEATURES_REFERENCE ?= " \
