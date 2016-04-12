@@ -69,6 +69,34 @@ STATELESS_ETC_WHITELIST += " \
     securetty \
 "
 
+# Let's just move wpa_supplicant.conf to defaults dir. Currently the
+# file is not used and it is the responsibility of the one who starts
+# the wpa_supplicant daemon to give the conf file as parameter to
+# daemon. Currently we are starting wpa_supplicant with dbus
+# interface, which Connman is then using.  At least in Galileo the
+# moving didn't make any difference to current wlan operation.
+# Also our current dbus should be able to read from usr/share/dbus-1.
+STATELESS_MV_pn-wpa-supplicant = " \
+    wpa_supplicant.conf=${datadir}/defaults/etc/wpa_supplicant.conf \
+    dbus-1/system.d/dbus-wpa_supplicant.conf=${datadir}/dbus-1/system.d/dbus-wpa_supplicant.conf \
+"
+
+FILES_${PN}_append_pn-wpa-supplicant = " \
+    ${datadir}/defaults/etc/wpa_supplicant.conf \
+    ${datadir}/dbus-1/system.d/dbus-wpa_supplicant.conf \
+"
+
+# Let's remove these for now because these are used by ifup and ifdown
+# which we are not using (check the connmann comment above). Also the
+# if-post-down version is a symlink to if-pre-up so the moving to
+# defaults might not work very well. These scripts also have hard
+# coded paths for interfaces in /etc so anyway we should then modify
+# the scripts.
+STATELESS_RM_pn-wpa-supplicant = " \
+    network/if-pre-up.d/wpa-supplicant \
+    network/if-post-down.d/wpa-supplicant \
+"
+
 # TODO: for each of these we need a working alternative
 STATELESS_MV_pn-base-files = " \
     issue.net \
