@@ -340,6 +340,18 @@ STATELESS_RM_pn-systemd += "xdg/systemd/user"
 # Managed by connman at runtime.
 STATELESS_RM_pn-systemd += "resolv.conf"
 
+# Remove this because it might confuse our setup
+# depending how components parse/combine their
+# configuration. For example with nsswitch.conf
+# "Clear" patched glibc combines its configuration
+# from defaults and /etc. This happens because tmpfiles
+# copies nsswitch.conf to /etc (and this copy is
+# defined in etc.conf). File has to be deleted
+# with rm because it is not even originally in /etc.
+do_install_append_pn-systemd () {
+    rm ${D}${exec_prefix}/lib/tmpfiles.d/etc.conf
+}
+
 # Only two options are set:
 # net.ipv4.conf.default.rp_filter=1
 # net.ipv4.conf.all.rp_filter=1
@@ -526,7 +538,7 @@ passwd:         files altfiles
 group:          files altfiles
 shadow:         files altfiles
 
-hosts:          files altfiles dns
+hosts:          files altfiles mymachines resolve myhostname
 networks:       files altfiles
 
 protocols:      db files altfiles
