@@ -69,6 +69,15 @@ STATELESS_ETC_WHITELIST += " \
     securetty \
 "
 
+# rsync has configure option for reading the conf file
+# from alternate location. Let's use this although
+# it doesn't work the "Clear" way and read from etc also
+# anymore. If the conf file is to be modified by the admin
+# the source code needs to be patched.
+EXTRA_OECONF_append_pn-rsync = " --with-rsyncd-conf=${datadir}/defaults/etc"
+STATELESS_MV_pn-rsync = "rsyncd.conf=${datadir}/defaults/etc/rsyncd.conf"
+FILES_${PN}_append_pn-rsync = " ${datadir}/defaults/etc/rsyncd.conf"
+
 # Let's just move wpa_supplicant.conf to defaults dir. Currently the
 # file is not used and it is the responsibility of the one who starts
 # the wpa_supplicant daemon to give the conf file as parameter to
