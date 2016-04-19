@@ -1,9 +1,15 @@
-SUMMARY = "Low Level Skeleton Library for Communication on Intel platforms"
+SUMMARY = "Sensor/Actuator repository for Mraa"
 SECTION = "libs"
-AUTHOR = "Brendan Le Foll, Tom Ingleby"
+AUTHOR = "Brendan Le Foll, Tom Ingleby, Yevgeniy Kiveisha"
 
 LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://COPYING;md5=66493d54e65bfc12c7983ff2e884f37f"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=d1cc191275d6a8c5ce039c75b2b3dc29"
+
+DEPENDS = "nodejs swig-native mraa"
+
+SRC_URI = "git://github.com/intel-iot-devkit/upm.git;protocol=git;rev=655ccee9afd259bff1773e9e8aea860f6e06b69f \
+           file://0001-cmake-Solved-issue-with-nodejs-installation-path.patch \
+          "
 
 S = "${WORKDIR}/git"
 
@@ -11,44 +17,42 @@ inherit distutils-base pkgconfig python-dir cmake
 
 PACKAGES =+ "python-${PN} node-${PN} ${PN}-java"
 
-# python-mraa package containing Python bindings
+# python-upm package containing Python bindings
 FILES_python-${PN} = "${PYTHON_SITEPACKAGES_DIR}/ \
-                      ${datadir}/mraa/examples/python/ \
-                      ${prefix}/src/debug/${BPN}/${PV}-${PR}/build/src/python/ \
+                      ${datadir}/${BPN}/examples/python/ \
+                      ${prefix}/src/debug/${BPN}/${PV}-${PR}/build/src/*/pyupm_* \
                      "
-RDEPENDS_python-${PN} += "python"
+RDEPENDS_python-${PN} += "python mraa"
 INSANE_SKIP_python-${PN} = "debug-files"
 
-# node-mraa package containing Nodejs bindings
+# node-upm package containing Nodejs bindings
 FILES_node-${PN} = "${libdir}/node_modules/ \
-                    ${datadir}/mraa/examples/javascript/ \
+                    ${datadir}/${BPN}/examples/javascript/ \
                    "
-RDEPENDS_node-${PN} += "nodejs"
+RDEPENDS_node-${PN} += "nodejs mraa"
 INSANE_SKIP_node-${PN} = "debug-files"
 
-# mraa-java package containing Java bindings
-FILES_${PN}-java = "${libdir}/libmraajava.so \
+# upm-java package containing Java bindings
+FILES_${PN}-java = "${libdir}/libjava*.so \
                     ${libdir}/java/ \
-                    ${datadir}/mraa/examples/java/ \
-                    ${libdir}/pkgconfig/mraajava.pc \
-                    ${prefix}/src/debug/${BPN}/${PV}-${PR}/build/src/java/ \
-                    ${libdir}/.debug/libmraajava.so \
+                    ${datadir}/${BPN}/examples/java/ \
+                    ${prefix}/src/debug/${BPN}/${PV}-${PR}/build/src/*/*javaupm_* \
+                    ${libdir}/.debug/libjava*.so \
                    "
 # include .jar files in /usr/lib/java for 64 bit builds
-FILES_${PN}-java_append = "${@' ${libdir}/../lib/java' if '${TARGET_ARCH}' == 'x86_64' else ''}"
+FILES_${PN}-java_append = "${@' ${libdir}/../lib/java/*' if '${TARGET_ARCH}' == 'x86_64' else ''}"
 
-RDEPENDS_${PN}-java += "java-runtime"
+RDEPENDS_${PN}-java += "java-runtime mraa-java"
 INSANE_SKIP_${PN}-java = "debug-files"
 
 
-FILES_${PN}-doc += "${datadir}/mraa/examples/"
+FILES_${PN}-doc += " ${datadir}/upm/examples/"
+RDEPENDS_${PN} += " mraa"
 
 PACKAGECONFIG ??= "python nodejs java"
 PACKAGECONFIG[python] = "-DBUILDSWIGPYTHON=ON, -DBUILDSWIGPYTHON=OFF, swig-native python,"
 PACKAGECONFIG[nodejs] = "-DBUILDSWIGNODE=ON, -DBUILDSWIGNODE=OFF, swig-native nodejs,"
 PACKAGECONFIG[java] = "-DBUILDSWIGJAVA=ON, -DBUILDSWIGJAVA=OFF, swig-native icedtea7-native,"
-
-EXTRA_OECMAKE_append = "-DINSTALLGPIOTOOL=ON"
 
 export JAVA_HOME="${STAGING_DIR}/${BUILD_SYS}/usr/lib/jvm/icedtea7-native"
 
@@ -62,9 +66,3 @@ set (JAVA_JVM_LIBRARY ${JAVA_HOME}/jre/lib/amd64/libjvm.so CACHE FILEPATH \"path
 " >> ${WORKDIR}/toolchain.cmake
 }
 
-do_compile_prepend () {
-  # when yocto builds in ${D} it does not have access to ../git/.git so git
-  # describe --tags fails. In order not to tag our version as dirty we use this
-  # trick
-  sed -i 's/-dirty//' src/version.c
-}
