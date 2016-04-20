@@ -30,6 +30,8 @@ FILES_${PN}-udhcpd = "${sysconfdir}/init.d/busybox-udhcpd"
 FILES_${PN}-udhcpc = "${sysconfdir}/udhcpc.d ${datadir}/udhcpc"
 FILES_${PN}-hwclock = "${sysconfdir}/init.d/hwclock.sh"
 
+FILES_${PN}_append = " ${datadir}/busybox.links.*"
+
 INITSCRIPT_PACKAGES = "${PN}-httpd ${PN}-syslog ${PN}-udhcpd ${PN}-mdev ${PN}-hwclock"
 
 INITSCRIPT_NAME_${PN}-httpd = "busybox-httpd"
@@ -187,11 +189,12 @@ do_install () {
 		# Install ${base_bindir}/busybox, and the ${base_bindir}/sh link so the postinst script
 		# can run. Let update-alternatives handle the rest.
 		install -d ${D}${base_bindir}
+		install -d ${D}${datadir}
 		if [ "${BUSYBOX_SPLIT_SUID}" = "1" ]; then
 			install -m 4755 ${B}/busybox.suid ${D}${base_bindir}
 			install -m 0755 ${B}/busybox.nosuid ${D}${base_bindir}
-			install -m 0644 ${S}/busybox.links.suid ${D}${sysconfdir}
-			install -m 0644 ${S}/busybox.links.nosuid ${D}${sysconfdir}
+			install -m 0644 ${S}/busybox.links.suid ${D}${datadir}
+			install -m 0644 ${S}/busybox.links.nosuid ${D}${datadir}
 			if grep -q "CONFIG_FEATURE_SH_IS_ASH=y" ${B}/.config; then
 				ln -sf busybox.nosuid ${D}${base_bindir}/sh
 			fi
@@ -366,8 +369,8 @@ python do_package_prepend () {
     if os.path.exists('%s/etc/busybox.links' % (dvar)):
         set_alternative_vars("${sysconfdir}/busybox.links", "${base_bindir}/busybox")
     else:
-        set_alternative_vars("${sysconfdir}/busybox.links.nosuid", "${base_bindir}/busybox.nosuid")
-        set_alternative_vars("${sysconfdir}/busybox.links.suid", "${base_bindir}/busybox.suid")
+        set_alternative_vars("${datadir}/busybox.links.nosuid", "${base_bindir}/busybox.nosuid")
+        set_alternative_vars("${datadir}/busybox.links.suid", "${base_bindir}/busybox.suid")
 }
 
 pkg_postinst_${PN} () {
@@ -383,7 +386,7 @@ pkg_postinst_${PN} () {
 			rm -f ${base_bindir}/busybox.nosuid
 		fi
 		for suffix in "" ".nosuid" ".suid"; do
-			if test -e ${sysconfdir}/busybox.links$suffix; then
+			if test -e ${datadir}/busybox.links$suffix; then
 				while read link; do
 					if test ! -e "$link"; then
 						# we can use busybox here because even if we are using splitted busybox
@@ -391,7 +394,7 @@ pkg_postinst_${PN} () {
 						busybox rm -f $link
 						busybox ln -s "${base_bindir}/busybox$suffix" $link
 					fi
-				done < ${sysconfdir}/busybox.links$suffix
+				done < ${datadir}/busybox.links$suffix
 			fi
 		done
 	fi
