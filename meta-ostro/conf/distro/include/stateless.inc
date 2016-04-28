@@ -361,6 +361,15 @@ do_install_append_pn-systemd () {
     rm ${D}${exec_prefix}/lib/tmpfiles.d/etc.conf
 }
 
+# Sed the default.script to use stateless default dir
+# and then just move the whole dir from etc to defaults.
+do_install_append_pn-busybox () {
+    sed -i "s:/etc/:${datadir}/defaults/etc/:" ${D}${datadir}/udhcpc/default.script
+}
+STATELESS_MV_ROOTFS += " \
+    udhcpc.d=${datadir}/defaults/etc/udhcpc.d \
+"
+
 # Only two options are set:
 # net.ipv4.conf.default.rp_filter=1
 # net.ipv4.conf.all.rp_filter=1
