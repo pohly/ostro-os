@@ -577,6 +577,7 @@ STATELESS_ALTFILES = " \
     rpc \
     services \
     shadow \
+    gshadow \
 "
 
 STATELESS_MV_ROOTFS += " \
