@@ -23,6 +23,11 @@ SUPPORTED_RECIPES ??= ""
 # with "fatal" aborting the build.
 SUPPORTED_RECIPES_CHECK ??= ""
 
+# Maximum number of dependency chains to print when the check fails.
+# Depending on a recipe deep in the stack can produce a lot of output,
+# this here acts as safeguard.
+SUPPORTED_RECIPES_CHECK_DEPENDENCY_LINES ??= "50"
+
 def load_supported_recipes(d):
     import os
 
@@ -108,6 +113,7 @@ python supported_recipes_eventhandler() {
         # Walk the recipe dependency tree and add one line for each path that ends in
         # an unsupported recipe.
         lines = []
+        max_lines = int(d.getVar('SUPPORTED_RECIPES_CHECK_DEPENDENCY_LINES', True))
         current_line = []
 
         # Pre-compute complete dependencies (DEPEND and RDEPEND) for each recipe
@@ -130,6 +136,9 @@ python supported_recipes_eventhandler() {
         # known to not depend on an unsupported recipe.
         okay = set()
 
+        class TruncatedError(Exception):
+            pass
+
         def visit_recipe(pn):
             if pn in okay:
                 return False
@@ -148,15 +157,21 @@ python supported_recipes_eventhandler() {
                not len(current_line) == 1:
                 # Current path is non-trivial, ends in an unsupported recipe and was not alread
                 # included in a longer, printed path. Add a copy to the output.
+                if len(lines) >= max_lines:
+                    raise TruncatedError()
                 lines.append(current_line[:])
                 printed = True
-            if not printed:
+            if not printed and not pn in unsupported:
                 okay.add(pn)
             del current_line[-1]
             return printed
 
-        for pn in sorted(roots):
-            visit_recipe(pn)
+        truncated = False
+        try:
+            for pn in sorted(roots):
+                visit_recipe(pn)
+        except TruncatedError:
+            truncated = True
 
         logger('The following unsupported recipes are required for the build:\n  ',
                '\n  '.join(sorted(unsupported)),
@@ -167,6 +182,10 @@ which include one or more of the unsupported recipes. -> means "depends on"
 and * marks unsupported recipes:
   ''',
                '\n  '.join([' -> '.join([('*' if pn in unsupported else '') + pn for pn in line]) for line in lines]),
+               ('''
+  ...
+  Output truncated, to see more increase SUPPORTED_RECIPES_CHECK_DEPENDENCY_LINES
+  (currently %d).''' % max_lines) if truncated else '',
                '''
 
 To avoid this message, several options exist:
