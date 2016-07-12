@@ -182,8 +182,8 @@ class ISA_CVEChecker:
                 flog.write("Error in executing cve-check-tool: " +
                            str(sys.exc_info()))
         else:
-            stdout_value = result[0]
-            tool_stderr_value = result[1]
+            stdout_value = result[0].decode('utf-8')
+            tool_stderr_value = result[1].decode('utf-8')
             if not tool_stderr_value and popen.returncode == 0:
                 report = self.report_name + "." + rtype
                 with open(report, 'wb') as freport:
