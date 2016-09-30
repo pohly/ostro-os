@@ -16,8 +16,7 @@
 # See docs/Guide.md for more information.
 
 DEPLOY_DIR_SWUPDBASE = "${DEPLOY_DIR}/swupd/${MACHINE}"
-SWUPD_ROOTFS_MANIFEST_SUFFIX = "-files-in-image.txt"
-SWUPD_ROOTFS_MANIFEST = "${PN}${SWUPD_ROOTFS_MANIFEST_SUFFIX}"
+SWUPD_ROOTFS_MANIFEST_SUFFIX = ".content.txt"
 
 # User configurable variables to disable all swupd processing or deltapack
 # generation.
@@ -130,17 +129,13 @@ python () {
     for bndl in bundles:
         check_reserved_name(bndl)
 
-    # Generate virtual images for each bundle which adds IMAGE_FEATURES as
-    # we can't easily determine which packages to install in order to satisfy
-    # the dependecies of an IMAGE_FEATURES
+    # Generate virtual images for all bundles.
     for bndl in bundles:
-        features = d.getVarFlag('BUNDLE_FEATURES', bndl, True)
-        if features:
-            extended.append('swupdbundle:%s' % bndl)
-            dep = ' bundle-%s-%s:do_image_complete' % (pn, bndl)
-            # do_stage_swupd_inputs will try and utilise artefacts of the bundle
-            # image build, so must depend on it having completed
-            d.appendVarFlag('do_stage_swupd_inputs', 'depends', dep)
+        extended.append('swupdbundle:%s' % bndl)
+        dep = ' bundle-%s-%s:do_image_complete' % (pn, bndl)
+        # do_stage_swupd_inputs will try and utilise artefacts of the bundle
+        # image build, so must depend on it having completed
+        d.appendVarFlag('do_stage_swupd_inputs', 'depends', dep)
 
     if havebundles:
         extended.append('swupdbundle:mega')
