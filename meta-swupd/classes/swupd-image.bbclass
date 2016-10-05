@@ -64,35 +64,23 @@ python () {
     # For bundle images, the corresponding bundle name. None in swupd images.
     bundle_name = d.getVar('BUNDLE_NAME', True)
 
-    # We set the path to the rootfs folder of the mega image here so that
-    # it's simple to refer to later.
-    megarootfs = d.getVar('IMAGE_ROOTFS', True)
+    # bundle-<image>-mega archives its rootfs as ${IMAGE_ROOTFS}.tar.
+    # Every other recipe then can copy (do_stage_swupd_inputs) or
+    # extract relevant files (do_image/create_rootfs()) without sharing
+    # the same pseudo database. Not sharing pseudo instances is faster
+    # and the expensive reading of individual files via pseudo only
+    # needs to be done once.
     if havebundles:
-        megarootfs = megarootfs.replace('/' + pn +'/', '/bundle-%s-mega/' % (pn_base or pn))
-        d.setVar('MEGA_IMAGE_ROOTFS', megarootfs)
+        mega_rootfs = d.getVar('IMAGE_ROOTFS', True)
+        mega_rootfs = mega_rootfs.replace('/' + pn +'/', '/bundle-%s-mega/' % (pn_base or pn))
+        d.setVar('MEGA_IMAGE_ROOTFS', mega_rootfs)
+        d.setVar('MEGA_IMAGE_ARCHIVE', mega_rootfs + '.tar')
 
     # We need to use a custom manifest filename for stage_swupd_inputs so that
     # the generated sstate can be used to fetch inputs for multiple "releases"
     manfileprefix = d.getVar('SSTATE_MANFILEPREFIX', True)
     manfileprefix = manfileprefix + '-' + ver
     d.setVar('SSTATE_MANFILEPREFIX', manfileprefix)
-
-    # do_stage_swupd_inputs in the main image recipe and do_image in the
-    # swupd images will copy files from the mega bundle and thus those
-    # recipes must use the same pseudo database.
-    #
-    # All other bundles can use their own pseudo instance, because the
-    # main image recipe is only interested in file lists, not the actual
-    # file attributes.
-    #
-    # Because real image building via SWUPD_IMAGES can happen also after
-    # the initial "bitbake <core image>" invocation, we have to keep that
-    # pseudo database around and cannot delete it.
-    if pn_base is None or \
-       bundle_name is None or \
-       bundle_name == 'mega':
-        pseudo_state = d.expand('${TMPDIR}/work-shared/%s/pseudo') % (pn_base or pn)
-        d.setVar('PSEUDO_LOCALSTATEDIR', pseudo_state)
 
     if pn_base is not None:
         # We want all virtual images from this recipe to deploy to the same
@@ -377,9 +365,7 @@ do_fetch_swupd_inputs[depends] += "virtual/fakeroot-native:do_populate_sysroot"
 SWUPD_FORMAT ??= "3"
 # do_swupd_update uses its own pseudo database, for several reasons:
 # - Performance is better when the pseudo instance is not shared
-#   with the do_image tasks of other virtual swupd image recipes (those
-#   tend to run in parallel, because they also depend on
-#   do_image_complete).
+#   with other tasks that run in parallel (for example, meta-isafw's do_analyse_image).
 # - Wiping out the deploy/swupd directory and re-executing do_stage_swupd_inputs/do_swupd_update
 #   really starts from a clean slate.
 # - The log.do_swupd_update will show commands that can be invoked directly, without
@@ -466,22 +452,22 @@ END
     }
 
     ${SWUPD_LOG_FN} "Generating update from $PREVREL to ${OS_VERSION}"
-    # bsdtar -acf ${DEPLOY_DIR}/swupd-before-create-update.tar.gz -C ${DEPLOY_DIR} swupd
+    # env $PSEUDO bsdtar -acf ${DEPLOY_DIR}/swupd-before-create-update.tar.gz -C ${DEPLOY_DIR} swupd
     invoke_swupd ${STAGING_BINDIR_NATIVE}/swupd_create_update --log-stdout -S ${DEPLOY_DIR_SWUPD} --osversion ${OS_VERSION} --format ${SWUPD_FORMAT}
 
     ${SWUPD_LOG_FN} "Generating fullfiles for ${OS_VERSION}"
-    # bsdtar -acf ${DEPLOY_DIR}/swupd-before-make-fullfiles.tar.gz -C ${DEPLOY_DIR} swupd
+    # env $PSEUDO bsdtar -acf ${DEPLOY_DIR}/swupd-before-make-fullfiles.tar.gz -C ${DEPLOY_DIR} swupd
     invoke_swupd ${STAGING_BINDIR_NATIVE}/swupd_make_fullfiles --log-stdout -S ${DEPLOY_DIR_SWUPD} ${OS_VERSION}
 
     ${SWUPD_LOG_FN} "Generating zero packs, this can take some time."
-    # bsdtar -acf ${DEPLOY_DIR}/swupd-before-make-zero-pack.tar.gz -C ${DEPLOY_DIR} swupd
+    # env $PSEUDO bsdtar -acf ${DEPLOY_DIR}/swupd-before-make-zero-pack.tar.gz -C ${DEPLOY_DIR} swupd
     for bndl in ${ALL_BUNDLES}; do
         ${SWUPD_LOG_FN} "Generating zero pack for $bndl"
         invoke_swupd ${STAGING_BINDIR_NATIVE}/swupd_make_pack --log-stdout -S ${DEPLOY_DIR_SWUPD} 0 ${OS_VERSION} $bndl
     done
 
     # Generate delta-packs going back SWUPD_N_DELTAPACK versions
-    # bsdtar -acf ${DEPLOY_DIR}/swupd-before-make-delta-pack.tar.gz -C ${DEPLOY_DIR} swupd
+    # env $PSEUDO bsdtar -acf ${DEPLOY_DIR}/swupd-before-make-delta-pack.tar.gz -C ${DEPLOY_DIR} swupd
     if [ ${SWUPD_DELTAPACKS} -eq 1 -a ${SWUPD_N_DELTAPACK} -gt 0 -a $PREVREL -gt 0 ]; then
         for bndl in ${ALL_BUNDLES}; do
             bndlcnt=0
