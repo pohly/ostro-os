@@ -19,8 +19,8 @@ def copyxattrfiles(d, filelist, src, dst, archive=False):
 
     d -- the bitbake data store
     filelist -- a list of file paths
-    src -- where to copy the files from
-    dst -- where to copy the files to
+    src -- where to copy the files from (directory or archive, auto-detected)
+    dst -- where to copy the files to (directory or archive, depending on archive parameter)
     archive -- create archive at dst instead of writing into that directory
     """
     import subprocess
@@ -29,18 +29,25 @@ def copyxattrfiles(d, filelist, src, dst, archive=False):
     bb.utils.mkdirhier(os.path.dirname(dst) if archive else dst)
     files = sorted(filelist)
 
+    fromdir = os.path.isdir(src)
     workdir = d.getVar('WORKDIR', True)
     fd, copyfile = tempfile.mkstemp(dir=workdir)
     os.close(fd)
     with open(copyfile, 'w') as fdest:
-        fdest.write('-C%s\n' % src)
         for f in files:
             fdest.write('%s\n' % f)
 
-    if archive:
-        cmd = "tar --xattrs --xattrs-include='*' --no-recursion -zcf %s -T %s -p" % (dst, copyfile)
+    if fromdir:
+        if archive:
+            cmd = "tar --xattrs --xattrs-include='*' --no-recursion -C %s -zcf %s -T %s -p" % (src, dst, copyfile)
+        else:
+            cmd = "tar --xattrs --xattrs-include='*' --no-recursion -C %s -cf - -T %s -p | tar -p --xattrs --xattrs-include='*' -xf - -C %s" % (src, copyfile, dst)
     else:
-        cmd = "tar --xattrs --xattrs-include='*' --no-recursion -cf - -T %s -p | tar -p --xattrs --xattrs-include='*' -xf - -C %s" % (copyfile, dst)
+        if archive:
+            # archive->archive not needed at the moment, could be done with "bsdtar -zcf <dst> @<src>".
+            bb.fatal('Extracting files from an archive and writing into an archive not supported by GNU tar.')
+        else:
+            cmd = "tar --xattrs --xattrs-include='*' --no-recursion -C %s -xf %s -T %s" % (dst, src, copyfile)
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     os.remove(copyfile)
 
