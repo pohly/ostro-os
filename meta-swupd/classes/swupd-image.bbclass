@@ -40,8 +40,17 @@ OS_VERSION ??= "${DISTRO_VERSION}"
 
 IMAGE_INSTALL_append = " swupd-client os-release"
 
-# We need to preserve xattrs which is only supported by GNU tar >= 1.27
-# to be sure this functionality works as expected use the tar-replacement-native
+# We need to preserve xattrs, which works with bsdtar out of the box.
+# It also has saner file handling (less syscalls per file) than GNU tar.
+# Last but not least, GNU tar 1.27.1 had weird problems extracting
+# all requested entries with -T from an archive ("Not found in archive"
+# errors for entries which were present and could be extraced or listed
+# when using simpler file lists).
+DEPENDS += "libarchive-native"
+
+# The same is only supported by GNU tar >= 1.27, which is needed for
+# extracting sstate. So to be sure this functionality works as
+# expected use the tar-replacement-native.
 DEPENDS += "tar-replacement-native"
 EXTRANATIVEPATH += "tar-native"
 
@@ -440,9 +449,8 @@ END
         dir=$(echo $archive | sed -e 's/.tar$//')
         if [ -e $archive ] && ! [ -d $dir ]; then
             mkdir -p $dir
-            # TODO: use bsdtar and auto-detect compression
             bbnote Unpacking $archive
-            env $PSEUDO tar --xattrs --xattrs-include='*' -zxf $archive -C $dir
+            env $PSEUDO bsdtar -xf $archive -C $dir
         fi
     done
 

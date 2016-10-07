@@ -21,9 +21,10 @@
 
 fakeroot do_mega_archive () {
     # Extracting files from this archive will be done using file lists which
-    # do not have a leading ./, therefore we also must avoid storing files
-    # with this prefix, otherwise some versions of tar do not find the files.
-    tar -zcf ${MEGA_IMAGE_ARCHIVE} --xattrs --xattrs-include='*' -C ${MEGA_IMAGE_ROOTFS} \
+    # do not have a leading ./. Some versions of GNU tar had problems finding
+    # those files when we stored them with, so although we now use bsdtar,
+    # let's keep it consistent (and shorter) and store without the prefix.
+    bsdtar -zcf ${MEGA_IMAGE_ARCHIVE} -C ${MEGA_IMAGE_ROOTFS} \
         $(ls -1 -a ${MEGA_IMAGE_ROOTFS} | grep -v -e '^\.$' -e '^\.\.$')
 }
 

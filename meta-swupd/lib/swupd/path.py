@@ -9,7 +9,7 @@ def copyxattrtree(src, dst):
     dst -- the destination to copy to
     """
     import subprocess
-    cmd = "tar --xattrs --xattrs-include='*' -cf - -C %s -p . | tar -p --xattrs --xattrs-include='*' -xf - -C %s" % (src, dst)
+    cmd = "bsdtar -cf - -C %s . | bsdtar -xf - -C %s" % (src, dst)
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
 
 
@@ -39,15 +39,15 @@ def copyxattrfiles(d, filelist, src, dst, archive=False):
 
     if fromdir:
         if archive:
-            cmd = "tar --xattrs --xattrs-include='*' --no-recursion -C %s -zcf %s -T %s -p" % (src, dst, copyfile)
+            cmd = "bsdtar --no-recursion -C %s -zcf %s -T %s -p" % (src, dst, copyfile)
         else:
-            cmd = "tar --xattrs --xattrs-include='*' --no-recursion -C %s -cf - -T %s -p | tar -p --xattrs --xattrs-include='*' -xf - -C %s" % (src, copyfile, dst)
+            cmd = "bsdtar --no-recursion -C %s -cf - -T %s -p | bsdtar -p -xf - -C %s" % (src, copyfile, dst)
     else:
         if archive:
             # archive->archive not needed at the moment, could be done with "bsdtar -zcf <dst> @<src>".
-            bb.fatal('Extracting files from an archive and writing into an archive not supported by GNU tar.')
+            bb.fatal('Extracting files from an archive and writing into an archive not implemented yet.')
         else:
-            cmd = "tar --xattrs --xattrs-include='*' --no-recursion -C %s -xf %s -T %s" % (dst, src, copyfile)
+            cmd = "bsdtar -C %s -xf %s -T %s" % (dst, src, copyfile)
     output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     if output:
         bb.fatal('Unexpected output from the following command:\n%s\n%s' % (cmd, output))
