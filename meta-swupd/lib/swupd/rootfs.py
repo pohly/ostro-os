@@ -53,7 +53,7 @@ def create_rootfs(d):
         create_content_manifests(rootfs, outfile, None, [])
         rootfs_contents.update(manifest_to_file_list(outfile))
         # clean up
-        os.unlink(outfile)
+        # os.unlink(outfile)
     else: # non-base image, i.e. swupdimage
         manifest = d.expand("${DEPLOY_DIR_SWUPD}/image/${OS_VERSION}/os-core")
         for suffix in suffixes:

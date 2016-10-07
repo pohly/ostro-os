@@ -47,7 +47,12 @@ def copyxattrfiles(d, filelist, src, dst, archive=False):
             # archive->archive not needed at the moment, could be done with "bsdtar -zcf <dst> @<src>".
             bb.fatal('Extracting files from an archive and writing into an archive not implemented yet.')
         else:
-            cmd = "bsdtar -C %s -xf %s -T %s" % (dst, src, copyfile)
+            # bsdtar supports --no-recursion only in combination with modes which
+            # create archives. That looks like an oversight, as extracting only
+            # directories (and not their content) is a valid use case for -T.
+            # We work around that by converting an archive on-the-fly and
+            # unpacking the converted one.
+            cmd = "bsdtar --no-recursion -T %s -cf - @%s | bsdtar -xf - -C %s" % (copyfile, src, dst)
     output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     if output:
         bb.fatal('Unexpected output from the following command:\n%s\n%s' % (cmd, output))
