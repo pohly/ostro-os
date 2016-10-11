@@ -1,7 +1,8 @@
-From 58ca5a993dc609941a42fba60186cfcf2d6b2f34 Mon Sep 17 00:00:00 2001
+From a696d077ad6b9c38129879b846377d9607ce99ef Mon Sep 17 00:00:00 2001
 From: Patrick Ohly <patrick.ohly@intel.com>
 Date: Tue, 11 Oct 2016 16:41:42 +0200
-Subject: [PATCH] swupd_create_update: call external command for each manifest
+Subject: [PATCH 1/2] swupd_create_update: call external command for each
+ manifest
 
 In Ostro OS, files stored on a device must have valid a security.ima
 xattr. Manifest files are read-only and thus should be using signed
@@ -17,12 +18,13 @@ problems with special characters, so if additional parameters are
 needed, a wrapper script has to be used.
 
 Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+
 ---
  include/swupd.h     |  2 ++
- src/create_update.c |  9 ++++++++-
+ src/create_update.c |  8 ++++++++
  src/globals.c       | 10 ++++++++++
  src/manifest.c      | 11 +++++++++++
- 4 files changed, 31 insertions(+), 1 deletion(-)
+ 4 files changed, 31 insertions(+)
 
 diff --git a/include/swupd.h b/include/swupd.h
 index 31c7191..ea4c78f 100644
@@ -44,19 +46,18 @@ index 31c7191..ea4c78f 100644
  extern void free_state_globals(void);
  
 diff --git a/src/create_update.c b/src/create_update.c
-index f1c840d..3389c4d 100644
+index f1c840d..cc001e5 100644
 --- a/src/create_update.c
 +++ b/src/create_update.c
-@@ -56,7 +56,7 @@ static const struct option prog_opts[] = {
- 	{ "format", required_argument, 0, 'F' },
+@@ -57,6 +57,7 @@ static const struct option prog_opts[] = {
  	{ "getformat", no_argument, 0, 'g' },
  	{ "statedir", required_argument, 0, 'S' },
--	{ "signcontent", no_argument, 0, 's' },
+ 	{ "signcontent", no_argument, 0, 's' },
 +	{ "manifestcmd", required_argument, 0, 'M' },
  	{ 0, 0, 0, 0 }
  };
  
-@@ -76,6 +76,7 @@ static void print_help(const char *name)
+@@ -76,6 +77,7 @@ static void print_help(const char *name)
  	printf("   -g, --getformat         Print current format string and exit\n");
  	printf("   -S, --statedir          Optional directory to use for state [ default:=%s ]\n", SWUPD_SERVER_STATE_DIR);
  	printf("   -s, --signcontent       Enables cryptographic signing of update content\n");
@@ -64,7 +65,7 @@ index f1c840d..3389c4d 100644
  	printf("\n");
  }
  
-@@ -133,6 +134,12 @@ static bool parse_options(int argc, char **argv)
+@@ -133,6 +135,12 @@ static bool parse_options(int argc, char **argv)
  		case 's':
  			enable_signing = true;
  			break;

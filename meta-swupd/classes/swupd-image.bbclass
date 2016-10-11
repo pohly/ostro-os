@@ -374,6 +374,11 @@ addtask fetch_swupd_inputs before do_swupd_update
 do_fetch_swupd_inputs[dirs] = "${DEPLOY_DIR_SWUPD}/maps ${DEPLOY_DIR_SWUPD}/image"
 do_fetch_swupd_inputs[depends] += "virtual/fakeroot-native:do_populate_sysroot"
 
+# List of shell commands to invoke for each swupd manifest
+# file. Use $@ to reference the manifest file name and
+# && before each shell command.
+SWUPD_MANIFEST_CMDS ??= ""
+
 SWUPD_FORMAT ??= "3"
 # do_swupd_update uses its own pseudo database, for several reasons:
 # - Performance is better when the pseudo instance is not shared
@@ -465,9 +470,18 @@ END
         time env $PSEUDO "$@"
     }
 
+    # Create a helper script with all commands that need to be run for the
+    # Manifest files before archiving and hashing them. Meant to be used
+    # for IMA signing, which changes the security.ima xattr and thus the
+    # hash of the files.
+    manifestcmd=${WORKDIR}/meta-swupd-create-manifest-cmd.sh
+    echo >$manifestcmd '#!/bin/sh -ex'
+    echo >>$manifestcmd 'true ${SWUPD_MANIFEST_CMDS}'
+    chmod a+x $manifestcmd
+
     ${SWUPD_LOG_FN} "Generating update from $PREVREL to ${OS_VERSION}"
     # bsdtar -acf ${DEPLOY_DIR}/swupd-before-create-update.tar.gz -C ${DEPLOY_DIR} swupd
-    invoke_swupd ${STAGING_BINDIR_NATIVE}/swupd_create_update --log-stdout -S ${DEPLOY_DIR_SWUPD} --osversion ${OS_VERSION} --format ${SWUPD_FORMAT}
+    invoke_swupd ${STAGING_BINDIR_NATIVE}/swupd_create_update --log-stdout -S ${DEPLOY_DIR_SWUPD} --osversion ${OS_VERSION} --format ${SWUPD_FORMAT} --manifestcmd $manifestcmd
 
     ${SWUPD_LOG_FN} "Generating fullfiles for ${OS_VERSION}"
     # bsdtar -acf ${DEPLOY_DIR}/swupd-before-make-fullfiles.tar.gz -C ${DEPLOY_DIR} swupd
