@@ -25,6 +25,13 @@ IMA_EVM_ROOTFS_HASHED ?= ". -depth 0 -false"
 # the iversion flags (needed by IMA when allowing writing).
 IMA_EVM_ROOTFS_IVERSION ?= ""
 
+# If meta-swupd is used, we must also sign the files created by
+# swupd_create_update because they will be unpacked on a running
+# system with IMA active. If we don't set security.ima, the running
+# system will add it, leading to hash verification failures becauses
+# hashes include xattrs.
+SWUPD_MANIFEST_CMDS_append = " && evmctl ima_sign --key ${IMA_EVM_PRIVKEY} $@"
+
 ima_evm_sign_rootfs () {
     cd ${IMAGE_ROOTFS}
 
