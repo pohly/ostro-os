@@ -1,0 +1,144 @@
+From 58ca5a993dc609941a42fba60186cfcf2d6b2f34 Mon Sep 17 00:00:00 2001
+From: Patrick Ohly <patrick.ohly@intel.com>
+Date: Tue, 11 Oct 2016 16:41:42 +0200
+Subject: [PATCH] swupd_create_update: call external command for each manifest
+
+In Ostro OS, files stored on a device must have valid a security.ima
+xattr. Manifest files are read-only and thus should be using signed
+hashes, just like regular files.
+
+When no security.ima xattr is set on the server side, the 3.6.0 client
+warns about "hash check failed for Manifest.xxx" and more recent
+client versions probably will fail completely.
+
+The new --manifestcmd option allows specifying a command which
+sets a security.ima xattr. It's invoked without a shell to avoid
+problems with special characters, so if additional parameters are
+needed, a wrapper script has to be used.
+
+Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+---
+ include/swupd.h     |  2 ++
+ src/create_update.c |  9 ++++++++-
+ src/globals.c       | 10 ++++++++++
+ src/manifest.c      | 11 +++++++++++
+ 4 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/include/swupd.h b/include/swupd.h
+index 31c7191..ea4c78f 100644
+--- a/include/swupd.h
++++ b/include/swupd.h
+@@ -147,12 +147,14 @@ extern char *state_dir;
+ extern char *packstage_dir;
+ extern char *image_dir;
+ extern char *staging_dir;
++extern char *manifest_cmd;
+ 
+ extern bool init_globals(void);
+ extern void free_globals(void);
+ extern bool set_format(char *);
+ extern void check_root(void);
+ extern bool set_state_dir(char *);
++extern bool set_manifest_cmd(const char *cmd);
+ extern bool init_state_globals(void);
+ extern void free_state_globals(void);
+ 
+diff --git a/src/create_update.c b/src/create_update.c
+index f1c840d..3389c4d 100644
+--- a/src/create_update.c
++++ b/src/create_update.c
+@@ -56,7 +56,7 @@ static const struct option prog_opts[] = {
+ 	{ "format", required_argument, 0, 'F' },
+ 	{ "getformat", no_argument, 0, 'g' },
+ 	{ "statedir", required_argument, 0, 'S' },
+-	{ "signcontent", no_argument, 0, 's' },
++	{ "manifestcmd", required_argument, 0, 'M' },
+ 	{ 0, 0, 0, 0 }
+ };
+ 
+@@ -76,6 +76,7 @@ static void print_help(const char *name)
+ 	printf("   -g, --getformat         Print current format string and exit\n");
+ 	printf("   -S, --statedir          Optional directory to use for state [ default:=%s ]\n", SWUPD_SERVER_STATE_DIR);
+ 	printf("   -s, --signcontent       Enables cryptographic signing of update content\n");
++	printf("   -M, --manifestcmd       External command which gets invoked for each new Manifest file");
+ 	printf("\n");
+ }
+ 
+@@ -133,6 +134,12 @@ static bool parse_options(int argc, char **argv)
+ 		case 's':
+ 			enable_signing = true;
+ 			break;
++		case 'M':
++			if (!optarg || !set_manifest_cmd(optarg)) {
++				printf("Invalid --manifestcmd argument: ''%s''\n\n", optarg);
++				return false;
++			}
++			break;
+ 		}
+ 	}
+ 
+diff --git a/src/globals.c b/src/globals.c
+index 74758ce..94de452 100644
+--- a/src/globals.c
++++ b/src/globals.c
+@@ -40,6 +40,7 @@ char *state_dir = NULL;
+ char *packstage_dir = NULL;
+ char *image_dir = NULL;
+ char *staging_dir = NULL;
++char *manifest_cmd = NULL;
+ 
+ bool set_format(char *userinput)
+ {
+@@ -76,6 +77,13 @@ bool set_state_dir(char *dir)
+ 	return true;
+ }
+ 
++bool set_manifest_cmd(const char *cmd)
++{
++	free(manifest_cmd);
++	manifest_cmd = strdup(cmd);
++	return true;
++}
++
+ bool init_globals(void)
+ {
+ 	if (format == 0) {
+@@ -103,6 +111,7 @@ void free_globals(void)
+ 	free(packstage_dir);
+ 	free(image_dir);
+ 	free(staging_dir);
++	free(manifest_cmd);
+ }
+ 
+ bool init_state_globals(void)
+@@ -123,4 +132,5 @@ void free_state_globals(void)
+ 	free(packstage_dir);
+ 	free(image_dir);
+ 	free(staging_dir);
++	free(manifest_cmd);
+ }
+diff --git a/src/manifest.c b/src/manifest.c
+index e130db6..83c9bab 100644
+--- a/src/manifest.c
++++ b/src/manifest.c
+@@ -825,6 +825,17 @@ static int write_manifest_plain(struct manifest *manifest)
+ 		free(submanifest_filename);
+ 	}
+ 
++	if (manifest_cmd) {
++		fclose(out);
++		out = NULL;
++
++		char *const cmd[] = { manifest_cmd, filename, NULL };
++		int cmdret = system_argv(cmd);
++		if (cmdret != 0) {
++			assert(0);
++		}
++	}
++
+ 	ret = 0;
+ exit:
+ 	if (manifest_tempdir) {
+-- 
+2.1.4
+
