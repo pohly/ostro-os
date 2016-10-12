@@ -16,6 +16,7 @@ SRC_URI = "git://github.com/clearlinux/swupd-server.git;protocol=https \
            file://0001-swupd-create-update-alternative-input-layout.patch \
            file://0002-add-logging-to-stdout.patch \
            file://swupd_create_update-call-external-command-for-each-m.patch \
+           file://swupd-server-include-xattrs-in-manifest-hash.patch \
            "
 SRCREV = "ddca171dad32229ceeff8b8527a179610b88ce55"
 

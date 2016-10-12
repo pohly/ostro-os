@@ -1,0 +1,40 @@
+From 1fc56df3b1cc5cf3c5f8405e20c5bc465e1c71e4 Mon Sep 17 00:00:00 2001
+From: Patrick Ohly <patrick.ohly@intel.com>
+Date: Wed, 12 Oct 2016 14:00:16 +0200
+Subject: [PATCH] swupd-server: include xattrs in manifest hash
+
+Client and server must agree on whether xattrs are included. Right
+now, the client includes them while the server doesn't, leading to
+hash mismatches in Ostro OS.
+
+Alternatively, we could also disable xattr checking on the client
+side, which might be easier overall: ensuring that IMA and Smack
+xattrs are set already on the server side is fairly complicated in
+Ostro, and it is not obvious whether including the xattrs in the hash
+has some real benefits.
+
+Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+
+---
+ src/manifest.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/manifest.c b/src/manifest.c
+index 83c9bab..bf4e3b8 100644
+--- a/src/manifest.c
++++ b/src/manifest.c
+@@ -812,6 +812,11 @@ static int write_manifest_plain(struct manifest *manifest)
+ 		}
+ 
+ 		string_or_die(&tempmanifest, "%s/Manifest.%s", manifest_tempdir, file->filename);
++		/*
++		 * use_xattr Has to match swupd-client:
++		 * there it is enabled unconditionally in verify_file().
++		 */
++		file->use_xattrs = true;
+ 		populate_file_struct(file, tempmanifest);
+ 		ret = compute_hash(file, tempmanifest);
+ 		if (ret != 0) {
+-- 
+2.1.4
+
