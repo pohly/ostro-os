@@ -37,7 +37,8 @@ python xattr_images_fix_transmute () {
     # the one from the process which creates it. swupd (or rather, the tools
     # it is currently built on) knows how to set security.SMACK64="_" when
     # it is set on the original files, but it does not know that it needs
-    # to remove that xattr when not set.
+    # to remove that xattr when not set. swupd manifest files need the same
+    # workaround, see below.
     import os
     import errno
 
@@ -135,3 +136,10 @@ python xattr_images_fix_transmute () {
 }
 # Same logic as in ima-evm-rootfs.bbclass: try to run as late as possible.
 IMAGE_PREPROCESS_COMMAND_append_smack = " xattr_images_fix_transmute ; "
+
+# If meta-swupd is used, we must also set _ as Smack label explicitly for
+# the files created by swupd_create_update because they will be unpacked
+# on a running system with Smack active. If we don't set security.SMACK64, the running
+# system will add it, leading to hash verification failures becauses
+# hashes include xattrs.
+SWUPD_MANIFEST_CMDS_append_smack = " && chsmack -a _ $@"
