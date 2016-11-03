@@ -1,6 +1,9 @@
 import glob
+import re
 import subprocess
 import shutil
+import urllib.request
+import urllib.error
 from oe.package_manager import RpmPM
 from oe.package_manager import OpkgPM
 from oe.package_manager import DpkgPM
@@ -159,3 +162,103 @@ def copy_old_versions(d):
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             if output:
                 bb.fatal('Unexpected output from the following command:\n%s\n%s' % (cmd, output))
+
+def download_manifests(content_url, version, component, to_dir):
+    """
+    Download one manifest file and recursively all manifests referenced by it.
+    Does not overwrite existing files. Unpacks on-the-fly using bsdtar
+    and thus is independent of the compression format, as long as bsdtar
+    recognizes it.
+    """
+    source = '%s/%d/Manifest.%s.tar' % (content_url, version, component)
+    target = os.path.join(to_dir, 'Manifest.%s' % component)
+    if not os.path.exists(target):
+        bb.debug(1, 'Downloading %s -> %s' % (source, target))
+        response = urllib.request.urlopen(source)
+        bb.utils.mkdirhier(to_dir)
+        bsdtar = subprocess.Popen(['bsdtar', '-xf', '-', '-C', to_dir],
+                                  stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT)
+        data = response.read()
+        output, _ = bsdtar.communicate(data)
+        if output or bsdtar.returncode:
+            bb.fatal('Unpacking %s with bsdtar failed:\n%s' % (source, output.decode('utf-8')))
+    with open(target) as f:
+        manifest_re = re.compile(r'^M.*\s(\d+)\s+(\S+)\n$')
+        for line in f.readlines():
+            m = manifest_re.match(line)
+            if m:
+                download_manifests(content_url, int(m.group(1)), m.group(2), to_dir)
+
+def download_old_versions(d):
+    """
+    Download the necessary information from the update repo that is needed
+    to build updates in that update stream. This can run in parallel to
+    a normal build and thus is not on the critical path.
+    """
+
+    content_url = d.getVar('SWUPD_CONTENT_URL', True)
+    version_url = d.getVar('SWUPD_VERSION_URL', True)
+    current_format = int(d.getVar('SWUPD_FORMAT', True))
+    deploy_dir = d.getVar('DEPLOY_DIR_SWUPD', True)
+    www_dir = os.path.join(deploy_dir, 'www')
+
+    if not content_url or not version_url:
+        bb.warn('SWUPD_CONTENT_URL and/or SWUPD_VERSION_URL not set, skipping download of old versions for the initial build of a swupd update stream.')
+        return
+
+    # Find latest version for each of the older formats.
+    # For now we ignore the released milestones and go
+    # directly to the URL with all builds. The information
+    # about milestones may be relevant for determining
+    # how format changes need to be handled.
+    latest_versions = {}
+    for format in range(3, current_format + 1):
+        try:
+            url = '%s/version/format%d/latest' % (content_url, format)
+            response = urllib.request.urlopen(url)
+            version = int(response.read())
+            latest_versions[format] = version
+            formatdir = os.path.join(www_dir, 'version', 'format%d' % format)
+            bb.utils.mkdirhier(formatdir)
+            with open(os.path.join(formatdir, 'latest'), 'w') as latest:
+                latest.write(str(version))
+        except urllib.error.HTTPError as http_error:
+            if http_error.code == 404:
+                bb.debug(1, '%s does not exist, skipping that format' % url)
+            else:
+                raise
+
+    # Now get the Manifests of the latest versions and the
+    # versions we are supposed to provide a delta for.
+    # There's no integrity checking for the files. bsdtar is
+    # expected to detect corrupted archives and https is expected
+    # to protect against man-in-the-middle attacks.
+    versions = set(latest_versions.values())
+    versions.update([int(x) for x in d.getVar('SWUPD_DELTAPACK_VERSIONS', True).split()])
+    for version in versions:
+        download_manifests(content_url, version,
+                           'MoM',
+                           os.path.join(www_dir, str(version)))
+        download_manifests(content_url, version,
+                           'full',
+                           os.path.join(www_dir, str(version)))
+
+    latest_version_file = os.path.join(deploy_dir, 'image', 'latest.version')
+    if not os.path.exists(latest_version_file):
+        # We located information about latest version from online www update repo.
+        # Now use that to determine what we are updating from. This will need further
+        # work to handle format changes.
+        #
+        # Building a proper update makes swupd_create_fullfiles
+        # a lot faster because it allows reusing existing, unmodified files.
+        # Saves a lot of space, too, because the new Manifest files then merely
+        # point to the older version (no entry in ${DEPLOY_DIR_SWUPD}/www/${OS_VERSION}/files,
+        # not even a link).
+        if not latest_versions:
+            bb.fatal("%s does not exist and no information was found under SWUPD_CONTENT_URL %s, cannot proceed without information about the previous build. When building the initial version, unset SWUPD_VERSION_URL and SWUPD_CONTENT_URL to proceed." % (latest_version_file, content_url))
+        latest = sorted(latest_versions.values())[-1]
+        bb.debug(2, "Setting %d in latest.version file" % latest)
+        with open(latest_version_file, 'w') as f:
+            f.write(str(latest))
