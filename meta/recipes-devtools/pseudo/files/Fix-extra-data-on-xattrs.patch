@@ -1,0 +1,38 @@
+From d5a6b5e2d23288452b374a1ffe32b6b3e52c13fc Mon Sep 17 00:00:00 2001
+From: Seebs <seebs@seebs.net>
+Date: Mon, 31 Oct 2016 13:09:54 -0500
+Subject: [PATCH] Fix extra data on xattrs
+
+For some reason, extended attributes were getting garbage
+appended in some cases. Attempt to fix this.
+
+Signed-off-by: Seebs <seebs@seebs.net>
+
+Upstream-Status: Backport [commit d5a6b5e2d23288452b374a1ffe32b6b3e52c13fc]
+
+Signed-off-by: Patrick Ohly <patrick.ohly@intel.com>
+
+---
+diff --git a/pseudo.c b/pseudo.c
+index db1c400..df2a419 100644
+--- a/pseudo.c
++++ b/pseudo.c
+@@ -496,10 +496,13 @@ pseudo_op(pseudo_msg_t *msg, const char *program, const char *tag, char **respon
+ 			/* For a rename op, we want to strip any trailing
+ 			 * slashes. For xattr, "oldpath" is the raw data
+ 			 * to be stored. */
+-			if (oldpathlen > 0 && msg->op == OP_RENAME) {
+-				if (oldpath[oldpathlen - 1] == '/') {
++			if (msg->op == OP_RENAME) {
++				if (oldpathlen > 0 && oldpath[oldpathlen - 1] == '/') {
+ 					oldpath[--oldpathlen] = '\0';
+ 				}
++			} else {
++				/* disregard the trailing null */
++				--oldpathlen;
+ 			}
+ 			/* if we got an oldpath, but a 0-length initial
+ 			 * path, we don't want to act as though we had
+-- 
+2.1.4
+
