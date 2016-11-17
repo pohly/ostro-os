@@ -8,6 +8,18 @@ DEPENDS = "file glib-2.0 rsync openssl libarchive bsdiff bzip2"
 # are assumed to be provided and would not get built.
 DEPENDS_append_class-native = " file-replacement-native bzip2-replacement-native"
 
+# This matches the SWUPD_TOOLS_FORMAT in swupd-image.bbclass.
+# When updating to a new release which changes the format of
+# the output, copy the recipe first to ensure that the old
+# release is still available if needed by swupd-image.bbclass,
+# then bump this number.
+#
+# The rest of the recipe ensures that different swupd-server
+# versions can be build and installed in parallel (format
+# number embedded in PN and the resulting files).
+SWUPD_SERVER_FORMAT = "3"
+PN = "swupd-server-format${SWUPD_SERVER_FORMAT}"
+FILESEXTRAPATHS_prepend = "${THISDIR}/swupd-server:"
 PV = "3.2.5+git${SRCPV}"
 SRC_URI = "git://github.com/clearlinux/swupd-server.git;protocol=https \
            file://0025-swupd_make_pack-fix-extracting-files-with-bsdtar.patch \
@@ -40,3 +52,9 @@ RDEPENDS_${PN} = "rsync"
 RDEPENDS_${PN}_class-target = " bsdtar"
 
 BBCLASSEXTEND = "native"
+
+do_install_append () {
+    for i in ${D}${bindir}/swupd_*; do
+        mv $i ${i}_${SWUPD_SERVER_FORMAT}
+    done
+}

@@ -30,9 +30,10 @@ RRECOMMENDS_${PN}_class-target = "os-release"
 # and bump the number by one for each update of the recipe where we
 # switch to a source that has a format change.
 #
-# To switch to a client with a new format also update SWUPD_FORMAT in
+# To switch to a client with a new format also update SWUPD_TOOLS_FORMAT in
 # swupd-image.bbclass.
-RPROVIDES_${PN} = "swupd-client-format3"
+SWUPD_CLIENT_FORMAT = "4"
+RPROVIDES_${PN} = "swupd-client-format${SWUPD_CLIENT_FORMAT}"
 
 # TODO: we inherit autotools-brokensep because the Makefile calls a perl script
 # in ${S} during one of its steps.
