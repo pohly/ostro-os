@@ -69,7 +69,7 @@ DEPLOY_DIR_SWUPD = "${DEPLOY_DIR}/swupd/${MACHINE}/${SWUPD_IMAGE_PN}"
 #
 # For this to work, "swupd-client" should always be invoked without
 # explicit format parameter.
-SWUPD_TOOLS_FORMAT ?= "3"
+SWUPD_TOOLS_FORMAT ?= "4"
 SWUPD_DISTRO_FORMAT ?= "0"
 SWUPD_FORMAT = "${@ str(int('${SWUPD_TOOLS_FORMAT}') + int('${SWUPD_DISTRO_FORMAT}')) }"
 IMAGE_INSTALL_append = " swupd-client-format${SWUPD_TOOLS_FORMAT}"
@@ -571,7 +571,7 @@ SWUPDDEPENDS = "\
 # in preparation of the build.
 #
 # For now we simply build all supported server versions.
-SWUPD_SERVER_FORMATS = "3"
+SWUPD_SERVER_FORMATS = "3 4"
 SWUPDDEPENDS += "${@ ' '.join(['swupd-server-format%s-native:do_populate_sysroot' % x for x in '${SWUPD_SERVER_FORMATS}'.split()])}"
 
 addtask swupd_update after do_image_complete before do_build
