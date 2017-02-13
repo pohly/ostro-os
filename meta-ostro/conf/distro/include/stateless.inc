@@ -69,6 +69,15 @@ STATELESS_ETC_WHITELIST += " \
     securetty \
 "
 
+# rsync has configure option for reading the conf file
+# from alternate location. Let's use this although
+# it doesn't work the "Clear" way and read from etc also
+# anymore. If the conf file is to be modified by the admin
+# the source code needs to be patched.
+EXTRA_OECONF_append_pn-rsync = " --with-rsyncd-conf=${datadir}/defaults/etc"
+STATELESS_MV_pn-rsync = "rsyncd.conf=${datadir}/defaults/etc/rsyncd.conf"
+FILES_${PN}_append_pn-rsync = " ${datadir}/defaults/etc/rsyncd.conf"
+
 # Let's just move wpa_supplicant.conf to defaults dir. Currently the
 # file is not used and it is the responsibility of the one who starts
 # the wpa_supplicant daemon to give the conf file as parameter to
@@ -340,6 +349,27 @@ STATELESS_RM_pn-systemd += "xdg/systemd/user"
 # Managed by connman at runtime.
 STATELESS_RM_pn-systemd += "resolv.conf"
 
+# Remove this because it might confuse our setup
+# depending how components parse/combine their
+# configuration. For example with nsswitch.conf
+# "Clear" patched glibc combines its configuration
+# from defaults and /etc. This happens because tmpfiles
+# copies nsswitch.conf to /etc (and this copy is
+# defined in etc.conf). File has to be deleted
+# with rm because it is not even originally in /etc.
+do_install_append_pn-systemd () {
+    rm ${D}${exec_prefix}/lib/tmpfiles.d/etc.conf
+}
+
+# Sed the default.script to use stateless default dir
+# and then just move the whole dir from etc to defaults.
+do_install_append_pn-busybox () {
+    sed -i "s:/etc/:${datadir}/defaults/etc/:" ${D}${datadir}/udhcpc/default.script
+}
+STATELESS_MV_ROOTFS += " \
+    udhcpc.d=${datadir}/defaults/etc/udhcpc.d \
+"
+
 # Only two options are set:
 # net.ipv4.conf.default.rp_filter=1
 # net.ipv4.conf.all.rp_filter=1
@@ -403,7 +433,10 @@ FILES_${PN}_append_pn-shadow = " ${datadir}/pam.d"
 
 # /etc/securetty controls which terminals allow root to login. The default (= everything
 # listed via console boot parameters) works fine for Ostro OS, so this is not needed.
-STATELESS_RM_pn-shadow = "securetty"
+# However we have a rdepends on this in shadow so let's not remove but move away
+# for now.
+STATELESS_MV_pn-shadow-securetty = "securetty=${datadir}/defaults/etc/securetty"
+FILES_${PN}_append_pn-shadow-securetty = " ${datadir}/defaults/etc/securetty"
 
 # TODO: makes these components user-configurable again?
 # libpam has to be relocated so that it matches the Clear Linux patches
@@ -526,7 +559,7 @@ passwd:         files altfiles
 group:          files altfiles
 shadow:         files altfiles
 
-hosts:          files altfiles dns
+hosts:          files altfiles mymachines resolve myhostname
 networks:       files altfiles
 
 protocols:      db files altfiles
@@ -544,6 +577,7 @@ STATELESS_ALTFILES = " \
     rpc \
     services \
     shadow \
+    gshadow \
 "
 
 STATELESS_MV_ROOTFS += " \

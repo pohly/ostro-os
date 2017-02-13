@@ -16,6 +16,10 @@ IMA_EVM_X509 ?= "${IMA_EVM_KEY_DIR}/x509_ima.der"
 # ima-local-ca.x509 is what ima-gen-local-ca.sh creates.
 IMA_EVM_ROOT_CA ?= ""
 
+# Path of the keys that are installed to the device
+# IMA_EVM_KEY_INSTALL_DIR = ${sysconfdir}
+IMA_EVM_KEY_INSTALL_DIR = "/usr/share/defaults/etc"
+
 # Sign all regular files by default.
 IMA_EVM_ROOTFS_SIGNED ?= ". -type f"
 # Hash nothing by default.
@@ -32,9 +36,9 @@ ima_evm_sign_rootfs () {
     # evmctl uses x509_evm.der also for "ima_verify", which is probably
     # a bug (should default to x509_ima.der). Does not matter for us
     # because we use the same key for both.
-    install -d ./${sysconfdir}/keys
-    install "${IMA_EVM_X509}" ./${sysconfdir}/keys/x509_evm.der
-    ln -s x509_evm.der ./${sysconfdir}/keys/x509_ima.der
+    install -d ./${IMA_EVM_KEY_INSTALL_DIR}/keys
+    install "${IMA_EVM_X509}" ./${IMA_EVM_KEY_INSTALL_DIR}/keys/x509_evm.der
+    ln -s x509_evm.der ./${IMA_EVM_KEY_INSTALL_DIR}/keys/x509_ima.der
 
     # Fix /etc/fstab: it must include the "i_version" mount option for
     # those file systems where writing files is allowed, otherwise
